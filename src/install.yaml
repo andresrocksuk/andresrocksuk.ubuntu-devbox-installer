@@ -1,0 +1,333 @@
+# WSL Installation Configuration
+# This file defines all software to be installed in the WSL environment
+
+# Metadata
+metadata:
+  name: "WSL Development Environment"
+  description: "Complete development environment setup for WSL Ubuntu 24.04 LTS"
+  version: "1.0.0"
+  author: "andresrocksmx"
+
+# Prerequisites that must be installed before other software
+prerequisites:
+  - curl
+  - wget
+  - yq
+  - software-properties-common
+  - apt-transport-https
+  - ca-certificates
+  - gnupg
+  - lsb-release
+
+# APT packages to install
+apt_packages:
+  - name: zsh
+    version: latest
+    description: "Z shell"
+
+  - name: git
+    version: latest
+    description: "Version control system"
+  
+  - name: jq
+    version: latest
+    description: "Command-line JSON processor"
+  
+  - name: curl
+    version: latest
+    description: "Command line tool for transferring data"
+  
+  - name: wget
+    version: latest
+    description: "Network downloader"
+  
+  - name: neovim
+    version: latest
+    description: "Modern text editor"
+    command: nvim
+  
+  - name: golang-go
+    version: latest
+    description: "Go programming language"
+    command: go
+
+  - name: python3
+    version: latest
+    description: "Python programming language"
+  
+  - name: python3-pip
+    version: latest
+    description: "Python package installer"
+    command: pip3
+
+  - name: pipx
+    version: latest
+    description: "Install and run Python applications in isolated environments"
+  
+  - name: build-essential
+    version: latest
+    description: "Essential build tools"
+    command: gcc
+  
+  - name: unzip
+    version: latest
+    description: "Archive extraction tool"
+  
+  - name: zip
+    version: latest
+    description: "Archive creation tool"
+  
+  - name: tree
+    version: latest
+    description: "Directory listing utility"
+  
+  - name: htop
+    version: latest
+    description: "Interactive process viewer"
+
+# Shell configuration (must run before custom software)
+shell_setup:
+  - name: set-zsh-default
+    description: "Set zsh as default shell for current and new users"
+    enabled: true
+    script: shell-config/set-zsh-default.sh
+
+# Custom software installations (not available via apt)
+custom_software:
+  - name: oh-my-zsh
+    description: "Zsh framework"
+    script: oh-my-zsh/install.sh
+    depends_on: [zsh]
+
+  - name: fastfetch
+    description: "System information tool"
+    script: fastfetch/install.sh
+    version_command: fastfetch
+    version_flag: --version
+  
+  - name: cuelang
+    description: "Data validation and configuration language"
+    script: cuelang/install.sh
+    version_command: cue
+    version_flag: version
+  
+  - name: yq
+    description: "YAML processor"
+    script: yq/install.sh
+    version_command: yq
+    version_flag: --version
+  
+  - name: nodejs-lts
+    description: "Node.js LTS runtime"
+    script: nodejs/install.sh
+    version_command: node
+    version_flag: --version
+  
+  - name: azure-cli
+    description: "Azure command-line interface"
+    script: azure-cli/install.sh
+    version_command: az
+    version_flag: --version
+  
+  - name: azure-devops-cli
+    description: "Azure DevOps CLI extension"
+    script: azure-devops-cli/install.sh
+    version_command: az
+    version_flag: --version
+    depends_on: [azure-cli]
+  
+  - name: kubectl
+    description: "Kubernetes command-line tool"
+    script: kubectl/install.sh
+    version_command: kubectl
+    version_flag: version --client
+  
+  - name: helm
+    description: "Kubernetes package manager"
+    script: helm/install.sh
+    version_command: helm
+    version_flag: version --short
+  
+  - name: ytt
+    description: "YAML templating tool"
+    script: ytt/install.sh
+    version_command: ytt
+    version_flag: --version
+  
+  - name: dotnet-sdk
+    description: ".NET SDK 8"
+    script: dotnet-sdk/install.sh
+    version_command: dotnet
+    version_flag: --version
+  
+  - name: terraform
+    description: "Infrastructure as code tool"
+    script: terraform/install.sh
+    version_command: terraform
+    version_flag: version
+  
+  - name: opentofu
+    description: "Open-source Terraform alternative"
+    script: opentofu/install.sh
+    version_command: tofu
+    version_flag: version
+
+  - name: powershell
+    description: "PowerShell Core"
+    script: powershell/install.sh
+    version_command: pwsh
+    version_flag: --version
+
+  - name: homebrew
+    description: "Linux package manager"
+    script: homebrew/install.sh
+    version_command: brew
+    version_flag: --version
+
+  - name: zoxide
+    description: "Smart directory navigation tool"
+    script: zoxide/install.sh
+    version_command: zoxide
+    version_flag: --version
+
+  - name: nix
+    description: "Nix package manager"
+    script: nix/install.sh
+    version_command: nix
+    version_flag: --version
+
+  - name: bat
+    description: "Better cat with syntax highlighting"
+    script: bat/install.sh
+    version_command: bat
+    version_flag: --version
+
+  - name: fzf
+    description: "Fuzzy finder for command line"
+    script: fzf/install.sh
+    version_command: fzf
+    version_flag: --version
+
+  - name: nano
+    description: "Simple text editor"
+    script: nano/install.sh
+    version_command: nano
+    version_flag: --version
+
+  - name: docker
+    description: "Containerization platform"
+    script: docker/install.sh
+    version_command: docker
+    version_flag: --version
+
+  - name: docker-compose
+    description: "Tool for defining multi-container applications"
+    script: docker-compose/install.sh
+    version_command: docker-compose
+    version_flag: --version
+    depends_on: [docker]
+
+  - name: k9s
+    description: "Kubernetes CLI with enhanced UI"
+    script: k9s/install.sh
+    version_command: k9s
+    version_flag: version
+
+# Python packages to install via pip
+python_packages:
+  - name: pre-commit
+    version: latest
+    description: "Pre-commit hooks framework"
+
+# PowerShell modules to install
+powershell_modules:
+  - name: Pester
+    version: latest
+    description: "PowerShell testing framework"
+  
+  - name: Az
+    version: latest
+    description: "Azure PowerShell module"
+
+# Nix packages to install via flake or individual packages
+nix_packages:
+  # Option 1: Install packages from a local flake file
+  # - flake:
+  #     enabled: true
+  #     type: local  # local or remote
+  #     path: "install.flake.nix"  # relative to wsl/ directory
+  #     description: "Basic Nix packages (hello, figlet)"
+  
+  # Option 2: Install packages from a remote flake (GitHub repository)
+  # - flake:
+  #     enabled: true
+  #     type: remote
+  #     url: "https://gist.githubusercontent.com/andresrocks/580cb8e7186d6ed23f71633f817d8413/raw/78a0b140be68c9a5b96d810635ab971cd24dd666/install.flake.nix"
+  #     description: "Development tools from remote flake"
+  
+  # Option 3: Install individual packages directly
+  - packages:
+      enabled: true  # disabled when using flakes above
+      list:
+        - name: hello
+          package: "nixpkgs.hello"
+          description: "Hello world program"
+        - name: figlet
+          package: "nixpkgs.figlet"
+          description: "Text banner generator"
+        - name: cowsay
+          package: "nixpkgs.cowsay"
+          description: "ASCII cow with speech bubble"
+
+# Configuration tasks
+configurations:
+  - name: setup-python-user-bin
+    description: "Setup system-wide access to Python user packages (pip --user, pipx)"
+    enabled: true
+    script: shell-config/setup-python-user-bin.sh
+  
+  - name: install-oh-my-zsh
+    description: "Install Oh My Zsh for current user and create setup for new users"
+    enabled: true
+    script: oh-my-zsh/setup-for-users.sh
+  
+  - name: configure-git
+    description: "Configure git with basic settings"
+    enabled: true
+    script: git/configure-git.sh
+  
+  - name: configure-neovim
+    description: "Basic neovim configuration"
+    enabled: true
+    script: neovim/configure-neovim.sh
+
+# Installation order (optional - defines dependency order)
+installation_order:
+  - prerequisites
+  - apt_packages
+  - shell_setup
+  - custom_software
+  - python_packages
+  - powershell_modules
+  - nix_packages
+  - configurations
+
+# Settings
+settings:
+  # Continue installation even if individual packages fail
+  continue_on_error: true
+  
+  # Update package lists before installation
+  update_packages: true
+  
+  # Clean up after installation
+  cleanup_after_install: true
+  
+  # Log level (DEBUG, INFO, WARN, ERROR)
+  log_level: INFO
+  
+  # Backup existing configurations before overwriting
+  backup_configs: true
+  
+  # Maximum retries for failed installations
+  max_retries: 2

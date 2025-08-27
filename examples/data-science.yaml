@@ -1,0 +1,180 @@
+# Data Science Environment Configuration
+# Comprehensive setup for data analysis and machine learning
+
+metadata:
+  name: "Data Science Environment"
+  description: "Complete setup for data science and machine learning work"
+  version: "1.0.0"
+  target_os: "ubuntu-24.04"
+  author: "WSL Install System"
+
+settings:
+  continue_on_error: true
+  update_packages: true
+  cleanup_after_install: true
+  log_level: "INFO"
+  max_retries: 3
+
+# Core system packages for data science
+apt_packages:
+  - name: git
+    version: latest
+    description: "Version control system"
+  - name: curl
+    version: latest
+    description: "Data transfer utility"
+  - name: wget
+    version: latest
+    description: "File download utility"
+  - name: jq
+    version: latest
+    description: "Command-line JSON processor"
+  - name: yq
+    version: latest
+    description: "Command-line YAML processor"
+  - name: neovim
+    version: latest
+    description: "Modern text editor"
+  - name: python3
+    version: latest
+    description: "Python programming language"
+  - name: python3-pip
+    version: latest
+    description: "Python package installer"
+  - name: pipx
+    version: latest
+    description: "Python application installer"
+  - name: python3-venv
+    version: latest
+    description: "Python virtual environments"
+  - name: python3-dev
+    version: latest
+    description: "Python development headers"
+  - name: build-essential
+    version: latest
+    description: "Essential compilation tools"
+  - name: pkg-config
+    version: latest
+    description: "Package configuration tool"
+  - name: libhdf5-dev
+    version: latest
+    description: "HDF5 library for large datasets"
+  - name: libxml2-dev
+    version: latest
+    description: "XML processing library"
+  - name: libxslt1-dev
+    version: latest
+    description: "XSLT processing library"
+  - name: zlib1g-dev
+    version: latest
+    description: "Compression library"
+  - name: unzip
+    version: latest
+    description: "Archive extraction utility"
+  - name: tree
+    version: latest
+    description: "Directory tree viewer"
+  - name: htop
+    version: latest
+    description: "System process viewer"
+
+# Data science tools and languages
+custom_software:
+  - name: fastfetch
+    description: "System information tool"
+    script: fastfetch/install.sh
+    version_command: fastfetch
+    version_flag: --version
+  - name: nodejs-lts
+    description: "Node.js JavaScript runtime"
+    script: nodejs/install.sh
+    version_command: node
+    version_flag: --version
+  - name: golang
+    description: "Go programming language"
+    script: golang/install.sh
+    version_command: go
+    version_flag: version
+
+# Essential Python packages for data science
+python_packages:
+  - name: jupyter
+    version: latest
+    description: "Interactive computing environment"
+  - name: jupyterlab
+    version: latest
+    description: "Next-generation web-based UI for Jupyter"
+  - name: numpy
+    version: latest
+    description: "Numerical computing library"
+  - name: pandas
+    version: latest
+    description: "Data manipulation and analysis"
+  - name: matplotlib
+    version: latest
+    description: "Plotting library"
+  - name: seaborn
+    version: latest
+    description: "Statistical data visualization"
+  - name: plotly
+    version: latest
+    description: "Interactive plotting library"
+  - name: scikit-learn
+    version: latest
+    description: "Machine learning library"
+  - name: scipy
+    version: latest
+    description: "Scientific computing library"
+  - name: requests
+    version: latest
+    description: "HTTP library"
+  - name: beautifulsoup4
+    version: latest
+    description: "Web scraping library"
+  - name: openpyxl
+    version: latest
+    description: "Excel file handling"
+  - name: xlrd
+    version: latest
+    description: "Excel file reader"
+  - name: ipython
+    version: latest
+    description: "Enhanced interactive Python shell"
+  - name: notebook
+    version: latest
+    description: "Jupyter notebook server"
+
+# PowerShell for cross-platform automation
+powershell_modules: []
+
+# Data science specific configurations
+configurations:
+  - name: configure-git
+    description: "Set up Git for data science workflows"
+    script: |
+      echo "Git user.name not set. Please configure manually with: git config --global user.name 'Your Name'"
+      echo "Git user.email not set. Please configure manually with: git config --global user.email 'your.email@example.com'"
+      git config --global init.defaultBranch main
+      git config --global pull.rebase false
+  - name: configure-jupyter
+    description: "Set up Jupyter configuration"
+    script: |
+      mkdir -p ~/.jupyter
+      echo "Creating Jupyter configuration..."
+      python3 -c "
+from jupyter_core.paths import jupyter_config_dir
+import os
+config_dir = jupyter_config_dir()
+os.makedirs(config_dir, exist_ok=True)
+print(f'Jupyter config directory: {config_dir}')
+"
+  - name: setup-data-directories
+    description: "Create standard data science directory structure"
+    script: |
+      mkdir -p ~/data-science/{data,notebooks,scripts,models,outputs}
+      echo "Created data science directory structure in ~/data-science/"
+      echo "  - data/      : Raw and processed datasets"
+      echo "  - notebooks/ : Jupyter notebooks"  
+      echo "  - scripts/   : Python scripts"
+      echo "  - models/    : Trained models"
+      echo "  - outputs/   : Results and visualizations"

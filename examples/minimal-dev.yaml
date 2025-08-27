@@ -1,0 +1,89 @@
+# Minimal Developer Setup Configuration
+# This is a lightweight configuration for basic development needs
+
+metadata:
+  name: "Minimal Developer Setup"
+  description: "Essential tools for basic development work"
+  version: "1.0.0"
+  target_os: "ubuntu-24.04"
+  author: "WSL Install System"
+
+settings:
+  continue_on_error: true
+  update_packages: true
+  cleanup_after_install: true
+  log_level: "INFO"
+  max_retries: 2
+
+# Essential APT packages for basic development
+apt_packages:
+  - name: git
+    version: latest
+    description: "Version control system"
+  - name: curl
+    version: latest
+    description: "Data transfer utility"
+  - name: jq
+    version: latest
+    description: "Command-line JSON processor"
+  - name: neovim
+    version: latest
+    description: "Modern text editor"
+  - name: python3
+    version: latest
+    description: "Python programming language"
+  - name: python3-pip
+    version: latest
+    description: "Python package installer"
+  - name: pipx
+    version: latest
+    description: "Python application installer"
+  - name: build-essential
+    version: latest
+    description: "Essential compilation tools"
+  - name: unzip
+    version: latest
+    description: "Archive extraction utility"
+  - name: tree
+    version: latest
+    description: "Directory tree viewer"
+
+# Minimal custom software - just the essentials
+custom_software:
+  - name: fastfetch
+    description: "System information tool"
+    script: fastfetch/install.sh
+    version_command: fastfetch
+    version_flag: --version
+  - name: nodejs-lts
+    description: "Node.js JavaScript runtime"
+    script: nodejs/install.sh
+    version_command: node
+    version_flag: --version
+
+# Essential Python tools
+python_packages:
+  - name: pre-commit
+    version: latest
+    description: "Pre-commit hooks framework"
+
+# No PowerShell modules in minimal setup
+powershell_modules: []
+
+# Basic configurations
+configurations:
+  - name: configure-git
+    description: "Set up Git configuration"
+    script: |
+      echo "Git user.name not set. Please configure manually with: git config --global user.name 'Your Name'"
+      echo "Git user.email not set. Please configure manually with: git config --global user.email 'your.email@example.com'"
+  - name: configure-neovim
+    description: "Set up basic Neovim configuration"
+    script: |
+      mkdir -p ~/.config/nvim
+      echo "\" Basic Neovim configuration" > ~/.config/nvim/init.vim
+      echo "set number" >> ~/.config/nvim/init.vim
+      echo "set relativenumber" >> ~/.config/nvim/init.vim
+      echo "set expandtab" >> ~/.config/nvim/init.vim
+      echo "set tabstop=2" >> ~/.config/nvim/init.vim
+      echo "set shiftwidth=2" >> ~/.config/nvim/init.vim

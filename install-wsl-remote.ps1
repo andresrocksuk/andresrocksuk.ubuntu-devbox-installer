@@ -2,7 +2,8 @@
 
 param(
     [switch]$ResetWSL,
-    [string]$Config = "",
+    [switch]$Force,
+    [string[]]$Config = @(),
     [string]$BranchName = "main",
     [switch]$Help
 )
@@ -12,23 +13,28 @@ if ($Help) {
     Write-Host @"
 WSL Ubuntu DevBox Remote Installer
 
-USAGE:
+BASIC USAGE:
     irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/$BranchName/install-wsl-remote.ps1" | iex
+
+BASIC ADVANCED USAGE:
+    & ([scriptblock]::Create((irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/$BranchName/install-wsl-remote.ps1")))
 
 PARAMETERS:
     -ResetWSL    Reset WSL distribution before installation (WARNING: This will delete existing WSL data)
-    -Config      Specify custom configuration file (e.g., 'minimal-dev', 'data-science')
+    -Force       Force installation without confirmation prompts (WARNING: This will skip all confirmations)
+    -Config      Specify installation section from the install.yaml configuration (e.g., @("apt_packages") or @("custom_software"))
+    -BranchName  Specify the branch name to use from the GitHub repository (default: "main")
     -Help        Show this help message
 
 EXAMPLES:
     # Basic installation
     irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/$BranchName/install-wsl-remote.ps1" | iex
 
-    # Installation with WSL reset
-    irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/$BranchName/install-wsl-remote.ps1" | iex -ResetWSL
+    # Installation with WSL reset (Advanced)
+    & ([scriptblock]::Create((irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/$BranchName/install-wsl-remote.ps1"))) -ResetWSL
 
     # Installation with minimal development configuration
-    irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/$BranchName/install-wsl-remote.ps1" | iex -Config "minimal-dev"
+    & ([scriptblock]::Create((irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/$BranchName/install-wsl-remote.ps1"))) -Config @("apt_packages")
 
 "@ -ForegroundColor Green
     return
@@ -104,12 +110,17 @@ function Start-RemoteInstallation {
             ResetWSL = $false
             RunDirect = $false
             Force = $false
-            Config = $null
+            Config = @()
         }
         
         if ($ResetWSL) {
             $installArgs.ResetWSL = $true
             Write-ColoredOutput "⚠️  WARNING: WSL will be reset (existing data will be lost)" "Red"
+        }
+
+        if ($Force) {
+            $installArgs.Force = $true
+            Write-ColoredOutput "⚠️  WARNING: Installation will not require confirmation" "Red"
         }
         
         if ($Config) {

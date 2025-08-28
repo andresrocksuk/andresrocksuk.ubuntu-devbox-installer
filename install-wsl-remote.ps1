@@ -1,9 +1,9 @@
 # WSL Ubuntu DevBox Remote Installer
-# Usage: irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/main/install-wsl-remote.ps1" | iex
 
 param(
     [switch]$ResetWSL,
     [string]$Config = "",
+    [string]$BranchName = "main",
     [switch]$Help
 )
 
@@ -13,7 +13,7 @@ if ($Help) {
 WSL Ubuntu DevBox Remote Installer
 
 USAGE:
-    irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/main/install-wsl-remote.ps1" | iex
+    irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/$BranchName/install-wsl-remote.ps1" | iex
 
 PARAMETERS:
     -ResetWSL    Reset WSL distribution before installation (WARNING: This will delete existing WSL data)
@@ -22,13 +22,13 @@ PARAMETERS:
 
 EXAMPLES:
     # Basic installation
-    irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/main/install-wsl-remote.ps1" | iex
+    irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/$BranchName/install-wsl-remote.ps1" | iex
 
     # Installation with WSL reset
-    irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/main/install-wsl-remote.ps1" | iex -ResetWSL
+    irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/$BranchName/install-wsl-remote.ps1" | iex -ResetWSL
 
     # Installation with minimal development configuration
-    irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/main/install-wsl-remote.ps1" | iex -Config "minimal-dev"
+    irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/$BranchName/install-wsl-remote.ps1" | iex -Config "minimal-dev"
 
 "@ -ForegroundColor Green
     return
@@ -63,7 +63,9 @@ function Start-RemoteInstallation {
     }
 
     # Repository information
-    $zipUrl = "https://github.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/archive/refs/heads/main.zip"
+    $branchNameClean = $BranchName.Replace('/', '-')
+    $branchLastPath = $BranchName.Split('/')[-1]
+    $zipUrl = "https://github.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/archive/refs/heads/$BranchName.zip"
     
     # Create temporary directory
     $tempDir = Join-Path $env:TEMP "ubuntu-devbox-installer-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
@@ -74,7 +76,7 @@ function Start-RemoteInstallation {
         
         # Download the repository
         Write-ColoredOutput "⬇️  Downloading latest version from GitHub..." "Yellow"
-        $zipPath = Join-Path $tempDir "main.zip"
+        $zipPath = Join-Path $tempDir "$branchLastPath.zip"
         
         # Use WebClient for better compatibility
         $webClient = New-Object System.Net.WebClient
@@ -87,7 +89,7 @@ function Start-RemoteInstallation {
         Expand-Archive -Path $zipPath -DestinationPath $tempDir -Force
         
         # Navigate to the extracted directory
-        $extractedDir = Join-Path $tempDir "andresrocksuk.ubuntu-devbox-installer-main"
+        $extractedDir = Join-Path $tempDir "andresrocksuk.ubuntu-devbox-installer-$branchNameClean"
         
         if (-not (Test-Path $extractedDir)) {
             throw "Extracted directory not found: $extractedDir"
@@ -117,7 +119,7 @@ function Start-RemoteInstallation {
         
         # Execute the installation script
         Write-ColoredOutput "🔄 Starting WSL Ubuntu DevBox installation..." "Cyan"
-        Write-ColoredOutput "Arguments: $($installArgs -join ' ')" "Gray"
+        Write-ColoredOutput "Arguments: $($installArgs | ConvertTo-Json)" "Yellow"
         
         $installScript = Join-Path $extractedDir "install-wsl.ps1"
         
@@ -152,4 +154,5 @@ function Start-RemoteInstallation {
 }
 
 # Execute the installation
+$LASTEXITCODE = $null
 Start-RemoteInstallation

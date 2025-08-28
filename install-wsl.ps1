@@ -485,8 +485,8 @@ fi
         
         # Also set using wsl --user command for immediate effect
         Write-Info "Setting default user for immediate effect..."
-        $wslUserResult = wsl --distribution $Distribution --user "$Username" -- echo "Default user set: $Username" 2>&1
-        wsl --manage $Distribution --set-default-user root $Username
+        wsl --distribution $Distribution --user "$Username" -- echo "Default user set: $Username" 2>&1
+        wsl --manage $Distribution --set-default-user $Username 2>$null | Out-Null
 
         if ($LASTEXITCODE -eq 0) {
             Write-Success "Default user '$Username' verified"

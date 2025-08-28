@@ -58,6 +58,9 @@ function Test-Administrator {
 
 # Main installation function
 function Start-RemoteInstallation {
+    $LASTEXITCODE = $null
+    $currentLocaton = Get-Location
+
     Write-ColoredOutput "🚀 WSL Ubuntu DevBox Remote Installer" "Cyan"
     Write-ColoredOutput "========================================" "Cyan"
     
@@ -161,9 +164,9 @@ function Start-RemoteInstallation {
         } catch {
             Write-ColoredOutput "⚠️  Warning: Could not clean up temporary directory: $tempDir" "Yellow"
         }
+        Set-Location $currentLocaton
     }
 }
 
 # Execute the installation
-$LASTEXITCODE = $null
 Start-RemoteInstallation

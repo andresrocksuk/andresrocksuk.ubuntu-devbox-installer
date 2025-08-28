@@ -129,6 +129,7 @@ function Get-WSLStatus {
     }
     catch {
         # WSL not installed or not working
+        Write-Warning "WSL is not installed."
     }
     
     return @{

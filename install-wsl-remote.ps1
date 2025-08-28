@@ -58,7 +58,7 @@ function Test-Administrator {
 
 # Main installation function
 function Start-RemoteInstallation {
-    $LASTEXITCODE = $null
+    $LASTEXITCODE = 0
     $currentLocaton = Get-Location
 
     Write-ColoredOutput "🚀 WSL Ubuntu DevBox Remote Installer" "Cyan"

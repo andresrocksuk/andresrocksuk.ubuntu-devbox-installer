@@ -3,7 +3,8 @@
 param(
     [switch]$ResetWSL,
     [switch]$Force,
-    [string[]]$Config = @(),
+    [string[]]$Sections = @(),
+    [string]$Config = "",
     [string]$BranchName = "main",
     [switch]$Help
 )
@@ -22,7 +23,8 @@ BASIC ADVANCED USAGE:
 PARAMETERS:
     -ResetWSL    Reset WSL distribution before installation (WARNING: This will delete existing WSL data)
     -Force       Force installation without confirmation prompts (WARNING: This will skip all confirmations)
-    -Config      Specify installation section from the install.yaml configuration (e.g., @("apt_packages") or @("custom_software"))
+    -Sections    Specify installation sections from the install.yaml configuration (e.g., @("apt_packages") or @("custom_software"))
+    -Config      Path to configuration file or URL to remote configuration file (e.g., "https://raw.githubusercontent.com/user/repo/main/config.yaml")
     -BranchName  Specify the branch name to use from the GitHub repository (default: "main")
     -Help        Show this help message
 
@@ -34,7 +36,10 @@ EXAMPLES:
     & ([scriptblock]::Create((irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/$BranchName/install-wsl-remote.ps1"))) -ResetWSL
 
     # Installation with minimal development configuration
-    & ([scriptblock]::Create((irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/$BranchName/install-wsl-remote.ps1"))) -Config @("apt_packages")
+    & ([scriptblock]::Create((irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/$BranchName/install-wsl-remote.ps1"))) -Sections @("apt_packages")
+
+    # Installation with remote configuration file
+    & ([scriptblock]::Create((irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/$BranchName/install-wsl-remote.ps1"))) -Config "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/refs/heads/main/src/install.yaml"
 
 "@ -ForegroundColor Green
     return
@@ -113,7 +118,8 @@ function Start-RemoteInstallation {
             ResetWSL = $false
             RunDirect = $false
             Force = $false
-            Config = @()
+            Sections = @()
+            Config = ""
         }
         
         if ($ResetWSL) {
@@ -126,9 +132,14 @@ function Start-RemoteInstallation {
             Write-ColoredOutput "⚠️  WARNING: Installation will not require confirmation" "Red"
         }
         
-        if ($Config) {
+        if ($Sections -and $Sections.Count -gt 0) {
+            $installArgs.Sections = $Sections
+            Write-ColoredOutput "🔧 Using sections: $($Sections -join ', ')" "Yellow"
+        }
+        
+        if ($Config -and $Config.Trim() -ne "") {
             $installArgs.Config = $Config
-            Write-ColoredOutput "🔧 Using configuration: $Config" "Yellow"
+            Write-ColoredOutput "🔧 Using configuration file: $Config" "Yellow"
         }
         
         # Execute the installation script

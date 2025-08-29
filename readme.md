@@ -12,6 +12,9 @@ A declarative WSL development environment installer that automates Ubuntu 24.04 
 - 📊 **Advanced Logging**: Single-run ID system for easy troubleshooting and correlation
 - 🚀 **Windows Integration**: PowerShell-based WSL management and reset capabilities
 - ⚡ **Performance Optimized**: Temp directory execution for faster installations
+- 🔐 **Security Hardened**: Input validation and injection attack prevention
+- 🌐 **Remote Configuration Support**: Use configurations directly from GitHub URLs
+- 🧪 **Enhanced Testing**: Comprehensive test suites for security, functionality, and features
 
 ## 🚀 Quick Start
 
@@ -83,21 +86,34 @@ The default configuration includes:
 
 ## 🎛️ Configuration Options
 
+### Using Remote Configurations (New!)
+
+```powershell
+# Use remote configuration directly from GitHub
+.\install-wsl.ps1 -AutoInstall -Config "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/refs/heads/main/src/install.yaml"
+
+# Use custom remote configuration
+.\install-wsl.ps1 -AutoInstall -Config "https://raw.githubusercontent.com/yourusername/your-repo/main/config.yaml"
+```
+
 ### Using Example Configurations
 
 ```powershell
 # Minimal developer setup
-.\install-wsl.ps1 -AutoInstall -Config @("src/examples/minimal-dev.yaml")
+.\install-wsl.ps1 -AutoInstall -Config "examples/minimal-dev.yaml"
 
 # Data science environment
-.\install-wsl.ps1 -AutoInstall -Config @("src/examples/data-science.yaml")
+.\install-wsl.ps1 -AutoInstall -Config "examples/data-science.yaml"
 ```
 
 ### Selective Installation
 
 ```powershell
 # Install only specific sections
-.\install-wsl.ps1 -AutoInstall -Config @("prerequisites","apt_packages")
+.\install-wsl.ps1 -AutoInstall -Sections "prerequisites","apt_packages"
+
+# Install single section
+.\install-wsl.ps1 -AutoInstall -Sections "custom_software"
 
 # Available sections:
 # - prerequisites
@@ -128,12 +144,44 @@ The default configuration includes:
 
 ## 🧪 Testing & Verification
 
+### PowerShell Test Runner
+
 ```powershell
-# Test all installations
+# Run all test suites
 .\test-installation-wsl.ps1
 
+# Run specific test type
+.\test-installation-wsl.ps1 -TestType basic
+.\test-installation-wsl.ps1 -TestType security
+.\test-installation-wsl.ps1 -TestType installation
+
+# Test on different distribution
+.\test-installation-wsl.ps1 -Distribution "Ubuntu-22.04" -TestType basic
+
+# Quick installation test
+.\test-install.ps1 -Sections "prerequisites"
+```
+
+### Available Test Types
+
+- **basic**: Core functionality and file verification
+- **security**: Input validation and injection attack prevention
+- **support-url**: Remote configuration and metadata features  
+- **installation**: Comprehensive software installation verification
+- **nix**: Nix package manager integration tests
+- **all**: Complete test suite
+
+### Direct WSL Testing
+
+```bash
 # From within WSL - test specific software
 ./src/tests/test-installation.sh --software "docker,nodejs,git"
+
+# Run security tests
+./src/tests/test-security.sh
+
+# Test basic functionality
+./src/tests/test-basic-functionality.sh
 
 # Generate detailed report
 ./src/tests/test-installation.sh --report
@@ -144,7 +192,8 @@ The default configuration includes:
 ```
 ubuntu-devbox-installer/
 ├── install-wsl.ps1              # Main PowerShell orchestrator
-├── test-installation-wsl.ps1    # PowerShell test wrapper
+├── test-installation-wsl.ps1    # Enhanced PowerShell test wrapper
+├── test-install.ps1             # Quick installation test script
 ├── src/
 │   ├── install.sh               # Main installation engine
 │   ├── install.yaml             # Default configuration
@@ -152,12 +201,18 @@ ubuntu-devbox-installer/
 │   │   ├── docker/
 │   │   ├── nodejs/
 │   │   ├── golang/
-│   │   └── [13 more...]
+│   │   └── [15+ more...]
 │   ├── utils/                   # Core utilities
 │   │   ├── logger.sh
 │   │   ├── package-manager.sh
-│   │   └── version-checker.sh
-│   └── tests/                   # Testing framework
+│   │   ├── version-checker.sh
+│   │   └── run-installation.sh  # Security-hardened execution wrapper
+│   └── tests/                   # Comprehensive testing framework
+│       ├── test-basic-functionality.sh
+│       ├── test-security.sh
+│       ├── test-support-url-feature.sh
+│       ├── test-installation.sh
+│       └── test-nix-installation.sh
 ├── examples/                    # Example configurations
 │   ├── minimal-dev.yaml
 │   ├── data-science.yaml
@@ -203,7 +258,7 @@ Common troubleshooting steps:
 
 3. Test the installation:
    ```powershell
-   .\install-wsl.ps1 -AutoInstall -Config custom_software
+   .\install-wsl.ps1 -AutoInstall -Sections "custom_software"
    ```
 
 ### Creating Custom Configurations
@@ -214,6 +269,16 @@ Copy and modify existing configurations:
 cp src/install.yaml my-config.yaml
 # Edit my-config.yaml for your needs
 ./src/install.sh --config my-config.yaml
+```
+
+Or use as a PowerShell parameter:
+
+```powershell
+# Local configuration file
+.\install-wsl.ps1 -AutoInstall -Config "my-config.yaml"
+
+# Remote configuration URL
+.\install-wsl.ps1 -AutoInstall -Config "https://example.com/my-config.yaml"
 ```
 
 ## 📚 Documentation

@@ -155,6 +155,67 @@ validate_sections() {
     done
 }
 
+# Function to download remote configuration file if needed
+download_remote_config() {
+    # Check if CONFIG_FILE looks like a URL
+    if [[ "$CONFIG_FILE" =~ ^https?:// ]]; then
+        log_info "Detected remote configuration URL: $CONFIG_FILE"
+        
+        # Create temp file for the remote config
+        local temp_config="/tmp/wsl-remote-config-$WSL_INSTALL_RUN_ID.yaml"
+        
+        log_info "Downloading remote configuration to: $temp_config"
+        
+        # Try to download with curl first, then wget
+        if command_exists "curl"; then
+            if curl -s -L "$CONFIG_FILE" -o "$temp_config"; then
+                log_success "Successfully downloaded remote configuration with curl"
+                CONFIG_FILE="$temp_config"
+                return 0
+            else
+                log_error "Failed to download remote configuration with curl"
+                exit 1
+            fi
+        elif command_exists "wget"; then
+            if wget -q "$CONFIG_FILE" -O "$temp_config"; then
+                log_success "Successfully downloaded remote configuration with wget"
+                CONFIG_FILE="$temp_config"
+                return 0
+            else
+                log_error "Failed to download remote configuration with wget"
+                exit 1
+            fi
+        else
+            log_error "Neither curl nor wget is available for downloading remote configuration"
+            exit 1
+        fi
+    fi
+}
+
+# Function to read and display metadata from config
+read_metadata() {
+    log_section "Configuration Metadata"
+    
+    local name=$(yq eval '.metadata.name // "WSL Development Environment"' "$CONFIG_FILE")
+    local description=$(yq eval '.metadata.description // ""' "$CONFIG_FILE")
+    local version=$(yq eval '.metadata.version // "1.0.0"' "$CONFIG_FILE")
+    local author=$(yq eval '.metadata.author // ""' "$CONFIG_FILE")
+    local support_url=$(yq eval '.metadata.support_url // ""' "$CONFIG_FILE")
+    
+    log_info "Name: $name"
+    if [ -n "$description" ]; then
+        log_info "Description: $description"
+    fi
+    log_info "Version: $version"
+    if [ -n "$author" ]; then
+        log_info "Author: $author"
+    fi
+    if [ -n "$support_url" ]; then
+        log_info "Support URL: $support_url"
+        export WSL_INSTALL_SUPPORT_URL="$support_url"
+    fi
+}
+
 # Function to check if yq is available for YAML parsing
 ensure_yq() {
     if ! command_exists "yq"; then
@@ -711,8 +772,14 @@ main() {
         exit 1
     fi
     
+    # Download remote configuration if needed
+    download_remote_config
+    
     # Validate configuration
     validate_config
+    
+    # Read and display metadata
+    read_metadata
     
     # Read settings from config
     read_settings

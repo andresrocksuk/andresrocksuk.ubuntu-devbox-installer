@@ -4,9 +4,35 @@ param(
     [switch]$Force,
     [switch]$ResetWSL,
     [switch]$RunDirect,
+    [ValidatePattern('^[a-zA-Z0-9.-]+$')]
     [string]$Distribution = "Ubuntu-24.04",
+    [ValidateScript({
+        if (Test-Path $_ -PathType Container -ErrorAction SilentlyContinue) {
+            return $true
+        } else {
+            throw "Installation path does not exist: $_"
+        }
+    })]
     [string]$InstallPath = (Join-Path $PSScriptRoot "src"),
-    [string[]]$Config = @()
+    [ValidateScript({
+        foreach ($section in $_) {
+            if ($section -notmatch '^[a-zA-Z_]+$') {
+                throw "Invalid section name: $section. Section names can only contain letters and underscores."
+            }
+        }
+        return $true
+    })]
+    [string[]]$Sections = @(),
+    [ValidateScript({
+        if ($_ -and $_.Trim() -ne "") {
+            # Allow file paths (alphanumeric, dots, slashes, backslashes, dashes, underscores) or HTTPS URLs
+            if ($_ -notmatch '^([a-zA-Z0-9._/\\-]+\.ya?ml|https://[a-zA-Z0-9._/-]+)$') {
+                throw "Invalid config parameter: $_. Must be a .yaml/.yml file path or HTTPS URL."
+            }
+        }
+        return $true
+    })]
+    [string]$Config = ""
 )
 
 <#
@@ -35,8 +61,11 @@ param(
 .PARAMETER InstallPath
     Path to the installation scripts (default: current script directory)
 
-.PARAMETER Config
+.PARAMETER Sections
     Specify one or more configuration sections to run. Available sections: prerequisites, apt_packages, shell_setup, custom_software, python_packages, powershell_modules, nix_packages, configurations. If not specified, all sections will be run.
+
+.PARAMETER Config
+    Path to the configuration file or URL to remote configuration file. If not specified, the default install.yaml file will be used.
 
 .EXAMPLE
     .\install-wsl.ps1 -AutoInstall
@@ -51,7 +80,7 @@ param(
     Only reset WSL without running installation script
 
 .EXAMPLE
-    .\install-wsl.ps1 -AutoInstall -Config "prerequisites","apt_packages"
+    .\install-wsl.ps1 -AutoInstall -Sections "prerequisites","apt_packages"
     Run only prerequisites and apt_packages sections and create default user
 
 .EXAMPLE
@@ -59,8 +88,12 @@ param(
     Run installation directly from mounted script without copying to temp directory
 
 .EXAMPLE
-    .\install-wsl.ps1 -AutoInstall -Config "custom_software"
+    .\install-wsl.ps1 -AutoInstall -Sections "custom_software"
     Run only the custom_software section and create default user
+
+.EXAMPLE
+    .\install-wsl.ps1 -AutoInstall -Config "https://raw.githubusercontent.com/user/repo/main/config.yaml"
+    Use a remote configuration file for the installation
 
 .EXAMPLE
     $env:WSL_DEFAULT_PASSWORD = "mypassword"; .\install-wsl.ps1 -AutoInstall -Force
@@ -565,7 +598,7 @@ function Start-WSLInstallation {
             
             # Start the installation script as a background job with the run ID
             $jobScriptBlock = {
-                param($Distribution, $SourcePath, $RunId, $LogPath, $ConfigSections)
+                param($Distribution, $SourcePath, $RunId, $LogPath, $ConfigSections, $ConfigFile)
                 
                 # Set environment variables for the installation script
                 $envVars = @(
@@ -573,10 +606,20 @@ function Start-WSLInstallation {
                     "LOG_DIR=$LogPath"
                 )
                 
-                # Build the command with optional config sections
+                # Build the command with optional config sections and config file
                 $configArgs = ""
                 if ($ConfigSections -and $ConfigSections.Count -gt 0) {
                     $configArgs = "--sections " + ($ConfigSections -join ",")
+                }
+                
+                if ($ConfigFile -and $ConfigFile.Trim() -ne "") {
+                    # Use proper escaping instead of single quotes
+                    $escapedConfigFile = $ConfigFile -replace "'", "'\''"
+                    if ($configArgs) {
+                        $configArgs += " --config '$escapedConfigFile'"
+                    } else {
+                        $configArgs = "--config '$escapedConfigFile'"
+                    }
                 }
                 
                 # Build environment variable string for env command
@@ -598,7 +641,7 @@ function Start-WSLInstallation {
                 }
             }
             
-            $job = Start-Job -ScriptBlock $jobScriptBlock -ArgumentList $Distribution, $wslSourcePath, $runId, $wslLogPath, $Config
+            $job = Start-Job -ScriptBlock $jobScriptBlock -ArgumentList $Distribution, $wslSourcePath, $runId, $wslLogPath, $Sections, $Config
         }
         else {
             Write-Info "Using temp directory for installation (default mode)..."
@@ -633,15 +676,25 @@ function Start-WSLInstallation {
             
             # Start the installation script as a background job with the run ID
             $jobScriptBlock = {
-                param($Distribution, $TempScript, $RunId, $LogPath, $SourcePath, $ConfigSections)
+                param($Distribution, $TempScript, $RunId, $LogPath, $SourcePath, $ConfigSections, $ConfigFile)
                 
                 # Use dedicated installation script for better maintainability
                 $runInstallScript = "$SourcePath/utils/run-installation.sh"
                 
-                # Build the command with optional config sections
+                # Build the command with optional config sections and config file
                 $configArgs = ""
                 if ($ConfigSections -and $ConfigSections.Count -gt 0) {
                     $configArgs = "--sections " + ($ConfigSections -join ",")
+                }
+                
+                if ($ConfigFile -and $ConfigFile.Trim() -ne "") {
+                    # Use proper escaping instead of single quotes
+                    $escapedConfigFile = $ConfigFile -replace "'", "'\''"
+                    if ($configArgs) {
+                        $configArgs += " --config '$escapedConfigFile'"
+                    } else {
+                        $configArgs = "--config '$escapedConfigFile'"
+                    }
                 }
                 
                 # Build the full command more safely
@@ -652,7 +705,7 @@ function Start-WSLInstallation {
                 }
             }
             
-            $job = Start-Job -ScriptBlock $jobScriptBlock -ArgumentList $Distribution, $wslTempDir, $runId, $wslLogPath, $wslSourcePath, @($Config)
+            $job = Start-Job -ScriptBlock $jobScriptBlock -ArgumentList $Distribution, $wslTempDir, $runId, $wslLogPath, $wslSourcePath, @($Sections), $Config
         }
         
         # Monitor the specific log file for this run
@@ -937,7 +990,6 @@ function Main {
     Write-Info "WSL Installation and Management Script"
     Write-Info "======================================"
     Write-Info ""
-    
     # Check admin privileges
     if (-not (Test-AdminPrivileges)) {
         Write-ErrorMessage "This script requires administrator privileges"

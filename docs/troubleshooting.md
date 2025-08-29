@@ -284,6 +284,44 @@ pip: command not found
 
 ## Configuration Issues
 
+### PowerShell Parameter Validation Errors
+
+**Problem:** PowerShell parameter validation fails before execution.
+
+```powershell
+install-wsl.ps1: Cannot validate argument on parameter 'Config'. Configuration file does not exist: nonexistent.yaml
+```
+
+**Solutions:**
+1. **File path issues:**
+   ```powershell
+   # Wrong: relative path without checking existence
+   .\install-wsl.ps1 -Config "config.yaml"
+   
+   # Right: use full path or verify file exists
+   .\install-wsl.ps1 -Config "C:\full\path\to\config.yaml"
+   .\install-wsl.ps1 -Config "src\install.yaml"  # Project's default config
+   ```
+
+2. **Remote URL validation:**
+   ```powershell
+   # Wrong: non-HTTPS URL
+   .\install-wsl.ps1 -Config "http://example.com/config.yaml"
+   
+   # Right: HTTPS URL required for security
+   .\install-wsl.ps1 -Config "https://example.com/config.yaml"
+   ```
+
+3. **Built-in configuration names:**
+   ```powershell
+   # Wrong: invalid built-in name
+   .\install-wsl.ps1 -Config "invalid-config"
+   
+   # Right: use valid built-in configurations
+   .\install-wsl.ps1 -Config "minimal-dev"
+   .\install-wsl.ps1 -Config "data-science"
+   ```
+
 ### YAML Syntax Errors
 
 **Problem:** Configuration file has syntax errors.

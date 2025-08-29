@@ -7,6 +7,7 @@ metadata:
   description: "Complete development environment setup for WSL Ubuntu 24.04 LTS"
   version: "1.0.0"
   author: "andresrocksmx"
+  support_url: "https://github.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/issues"
 
 # Prerequisites that must be installed before other software
 prerequisites:

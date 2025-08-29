@@ -2,18 +2,46 @@
 
 This document provides a comprehensive reference for configuring the WSL Ubuntu DevBox Installer using YAML configuration files.
 
+## PowerShell Parameter Reference
+
+The installer supports multiple configuration methods through PowerShell parameters:
+
+### Configuration Sources
+
+- **File-based**: Use `-Config path/to/config.yaml` for local YAML files
+- **Remote configurations**: Use `-Config https://example.com/config.yaml` for remote configurations
+- **Built-in configurations**: Use `-Config minimal-dev` or `-Config data-science` for included examples
+
+### Key Parameters
+
+- `-Config <string>`: Configuration source (file path, URL, or built-in name)
+- `-AutoInstall`: Run without user prompts (for automation)
+- `-ResetWSL`: Reset WSL distribution before installation (destructive operation)
+- `-SkipTempCopy`: Run directly in WSL without copying to temp (slower but uses less disk)
+- `-LogLevel <string>`: Set logging verbosity (DEBUG, INFO, WARN, ERROR)
+
+### Parameter Validation
+
+The PowerShell script includes comprehensive parameter validation:
+
+- Configuration paths are validated for existence
+- Remote URLs are validated for HTTPS protocol
+- Built-in configuration names are validated against available options
+- Parameters are checked before WSL execution begins
+
 ## YAML Schema Overview
 
 The configuration system uses a structured YAML format to define all aspects of your development environment. Here's the complete schema:
 
 ```yaml
-# Metadata section
+# Metadata section (Enhanced with support URL)
 metadata:
   name: "Environment Name"
   description: "Description of the environment"
   version: "1.0.0"
   target_os: "ubuntu-24.04"
   author: "Author Name"
+  support_url: "https://github.com/your-repo/issues"  # New: support/issue tracking URL
 
 # Global settings
 settings:
@@ -103,6 +131,7 @@ metadata:
   version: "2.1.0"
   target_os: "ubuntu-24.04"
   author: "development-team"
+  support_url: "https://github.com/myorg/myrepo/issues"
 ```
 
 **Fields:**
@@ -111,6 +140,7 @@ metadata:
 - `version`: Semantic version of your configuration
 - `target_os`: Target operating system (currently `ubuntu-24.04`)
 - `author`: Configuration author or team name
+- `support_url`: Optional URL for support, issues, or documentation
 
 ### 2. Settings Section
 

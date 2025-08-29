@@ -19,11 +19,14 @@ irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox
 ### Installation with Custom Configuration
 
 ```powershell
-# Minimal development environment
-irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/main/install-wsl-remote.ps1" | iex -Config "minimal-dev"
+# Minimal development environment (specific sections)
+& ([scriptblock]::Create((irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/main/install-wsl-remote.ps1"))) -Sections @("prerequisites","apt_packages")
 
-# Data science environment
-irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/main/install-wsl-remote.ps1" | iex -Config "data-science"
+# Custom configuration file from URL
+& ([scriptblock]::Create((irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/main/install-wsl-remote.ps1"))) -Config "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/refs/heads/main/src/install.yaml"
+
+# Combine custom config with specific sections
+& ([scriptblock]::Create((irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/main/install-wsl-remote.ps1"))) -Config "https://raw.githubusercontent.com/username/repo/main/config.yaml" -Sections @("custom_software")
 ```
 
 ### Show Help

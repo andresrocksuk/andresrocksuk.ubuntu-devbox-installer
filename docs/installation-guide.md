@@ -100,11 +100,46 @@ If you want to start completely fresh:
 Install only specific components:
 
 ```powershell
-# Install only core packages
-.\install-wsl.ps1 -AutoInstall -Config "prerequisites","apt_packages"
+# Install only prerequisites and basic packages
+.\install-wsl.ps1 -AutoInstall -Sections "prerequisites","apt_packages"
 
 # Install only development tools
-.\install-wsl.ps1 -AutoInstall -Config "custom_software","python_packages"
+.\install-wsl.ps1 -AutoInstall -Sections "custom_software"
+
+# Available sections:
+# - prerequisites      (essential system packages)
+# - apt_packages      (Ubuntu repository packages)  
+# - shell_setup       (zsh and oh-my-zsh)
+# - custom_software   (Docker, Node.js, Go, etc.)
+# - python_packages   (pip/pipx packages)
+# - powershell_modules (Windows PowerShell modules)
+# - nix_packages      (Nix flake packages)
+# - configurations    (post-install configurations)
+```
+
+### Method 4: Remote Configuration
+
+Use configurations directly from URLs:
+
+```powershell
+# Use remote configuration from GitHub
+.\install-wsl.ps1 -AutoInstall -Config "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/refs/heads/main/src/install.yaml"
+
+# Use your own remote configuration
+.\install-wsl.ps1 -AutoInstall -Config "https://raw.githubusercontent.com/yourusername/your-repo/main/my-config.yaml"
+
+# Combine with sections for selective remote installation
+.\install-wsl.ps1 -AutoInstall -Config "https://example.com/config.yaml" -Sections "prerequisites","custom_software"
+```
+
+### Method 5: Using Example Configurations
+
+```powershell
+# Install only core packages
+.\install-wsl.ps1 -AutoInstall -Sections "prerequisites","apt_packages"
+
+# Install only development tools
+.\install-wsl.ps1 -AutoInstall -Sections "custom_software","python_packages"
 ```
 
 Available configuration sections:
@@ -117,7 +152,22 @@ Available configuration sections:
 - `nix_packages` - Nix package manager packages
 - `configurations` - Post-install configurations
 
-### Method 4: Unattended Installation
+### Method 4: Custom Configuration File
+
+Use a custom configuration file or remote configuration:
+
+```powershell
+# Use a local custom configuration file
+.\install-wsl.ps1 -AutoInstall -Config "path\to\custom-config.yaml"
+
+# Use a remote configuration file
+.\install-wsl.ps1 -AutoInstall -Config "https://raw.githubusercontent.com/username/repo/main/config.yaml"
+
+# Combine custom config with specific sections
+.\install-wsl.ps1 -AutoInstall -Config "custom-config.yaml" -Sections "prerequisites","apt_packages"
+```
+
+### Method 5: Unattended Installation
 
 For automation or CI/CD scenarios:
 

@@ -102,4 +102,18 @@ When implementing new features:
 4. Update `changelog.md` upon completion
 5. Generate final documentation in `docs/` directory
 
+## Bash and PowerShell Scripts Security
+When implementing or modifying bash scripts, follow these security best practices:
+1. Always validate and sanitize inputs using regex patterns to allow only expected characters.
+2. Do not use eval or similar functions to execute dynamically constructed commands unless absolutely necessary and safe.
+3. Use double quotes around variable expansions to prevent word splitting and globbing.
+4. Avoid passing untrusted input directly to shell commands.
+5. Implement error handling to catch and log unexpected behavior.
+6. Regularly review and test scripts for vulnerabilities, especially when handling external inputs.
+
+## Test Scripts
+- Create dedicated test scripts in `src/tests/` for scripts.
+
 When modifying this codebase, maintain the modular software-scripts structure, preserve the logging patterns for troubleshooting, and ensure all new configurations follow the YAML schema established in existing examples.
+
+To be sure that this instructions are followed, include at the beginning of your explanations "[Following your instructions]"

@@ -170,6 +170,58 @@ fi
 
 **Supported operators:** `>`, `>=`, `<`, `<=`, `==`, `!=`
 
+### Run Installation Utility (`src/utils/run-installation.sh`)
+
+Provides secure parameter validation and execution for WSL installation. This utility implements DRY principles with reusable validation functions.
+
+#### Functions
+
+##### `validate_parameter(param_name, param_value, validation_pattern, error_message)`
+Validates a parameter value against a regex pattern.
+
+```bash
+if validated_value=$(validate_parameter "--config" "src/install.yaml" "^[a-zA-Z0-9._/-]+\.ya?ml$" "Invalid config file"); then
+    echo "Config validated: $validated_value"
+fi
+```
+
+**Parameters:**
+- `param_name`: Name of the parameter being validated
+- `param_value`: Value to validate (quotes will be stripped)
+- `validation_pattern`: Regex pattern for validation
+- `error_message`: Error message if validation fails
+
+**Returns:** Validated value on success, empty on failure
+
+##### `process_param_with_value(param_name, param_index, validation_pattern, error_message, args_ref, validated_ref, index_ref)`
+Processes a parameter that requires a value with validation.
+
+```bash
+local validated_args=()
+local i=0
+if process_param_with_value "--config" "$i" "^[a-zA-Z0-9._/-]+\.ya?ml$" "Invalid config" RAW_ARGS validated_args i; then
+    echo "Parameter processed successfully"
+fi
+```
+
+**Parameters:**
+- `param_name`: Name of the parameter
+- `param_index`: Current index in arguments array
+- `validation_pattern`: Regex pattern for value validation
+- `error_message`: Error message for validation failures
+- `args_ref`: Reference to input arguments array
+- `validated_ref`: Reference to output validated arguments array
+- `index_ref`: Reference to index variable (updated after processing)
+
+**Returns:** 0 for success, 1 for failure
+
+#### Security Features
+
+- **Input Sanitization**: Removes quotes and validates against strict regex patterns
+- **Injection Prevention**: Blocks command injection attempts in configuration parameters
+- **Parameter Validation**: Ensures only valid parameter combinations are accepted
+- **Error Handling**: Provides detailed error messages for debugging
+
 ## Installation Script APIs
 
 ### Main Installation Script (`src/install.sh`)

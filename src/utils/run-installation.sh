@@ -91,10 +91,128 @@ fi
 # Make sure install.sh is executable
 chmod +x ./install.sh
 
+# Helper function to validate parameter value
+validate_parameter() {
+    local param_name="$1"
+    local param_value="$2"
+    local validation_pattern="$3"
+    local error_message="$4"
+    
+    # Remove quotes from parameter value
+    param_value=$(echo "$param_value" | sed "s/^['\"]//;s/['\"]$//")
+    
+    # Validate against pattern
+    if [[ "$param_value" =~ $validation_pattern ]]; then
+        echo "$param_value"
+        return 0
+    else
+        log_error "$error_message: $param_value"
+        return 1
+    fi
+}
+
+# Helper function to process parameter with value
+process_param_with_value() {
+    local param_name="$1"
+    local param_index="$2"
+    local validation_pattern="$3"
+    local error_message="$4"
+    local -n args_ref=$5
+    local -n validated_ref=$6
+    local -n index_ref=$7
+    
+    # Check if value exists
+    if [ $((param_index + 1)) -lt ${#args_ref[@]} ]; then
+        local param_value="${args_ref[$((param_index + 1))]}"
+        
+        # Validate the parameter value
+        if validated_value=$(validate_parameter "$param_name" "$param_value" "$validation_pattern" "$error_message"); then
+            validated_ref+=("$param_name" "$validated_value")
+            index_ref=$((param_index + 2))
+            return 0
+        else
+            return 1
+        fi
+    else
+        log_error "Missing value for $param_name parameter"
+        return 1
+    fi
+}
+
+# Function to validate and sanitize config arguments
+validate_config_args() {
+    local args_string="$1"
+    local -a validated_args=()
+    
+    # If no args, return empty
+    if [ -z "$args_string" ]; then
+        return 0
+    fi
+    
+    # Split the args string carefully
+    IFS=' ' read -ra RAW_ARGS <<< "$args_string"
+    
+    local i=0
+    while [ $i -lt ${#RAW_ARGS[@]} ]; do
+        local arg="${RAW_ARGS[$i]}"
+        
+        case "$arg" in
+            --sections|-s)
+                if process_param_with_value "--sections" "$i" "^[a-zA-Z_,]+$" "Invalid sections parameter" RAW_ARGS validated_args i; then
+                    continue
+                else
+                    return 1
+                fi
+                ;;
+            --config|-c)
+                # Config can be either HTTPS URL or YAML file path
+                local config_pattern="^(https://[a-zA-Z0-9._/-]+|[a-zA-Z0-9._/-]+\.ya?ml)$"
+                if process_param_with_value "--config" "$i" "$config_pattern" "Invalid config parameter" RAW_ARGS validated_args i; then
+                    continue
+                else
+                    return 1
+                fi
+                ;;
+            --log-level|-l)
+                if process_param_with_value "--log-level" "$i" "^(DEBUG|INFO|WARN|ERROR)$" "Invalid log level" RAW_ARGS validated_args i; then
+                    continue
+                else
+                    return 1
+                fi
+                ;;
+            --force|-f|--dry-run|-d|--run-apt-upgrade|-h|--help|-v|--version)
+                # Allow these flags without parameters
+                validated_args+=("$arg")
+                i=$((i + 1))
+                ;;
+            *)
+                log_error "Invalid argument: $arg"
+                return 1
+                ;;
+        esac
+    done
+    
+    # Store validated args in global array
+    VALIDATED_ARGS=("${validated_args[@]}")
+    return 0
+}
+
+# Run the installation script
 # Run the installation script
 log_info "Executing ./install.sh with config args: $CONFIG_ARGS"
 if [ -n "$CONFIG_ARGS" ]; then
-    bash ./install.sh $CONFIG_ARGS
+    # Validate and sanitize arguments to prevent injection
+    if validate_config_args "$CONFIG_ARGS"; then
+        log_info "Arguments validated successfully"
+        if [ ${#VALIDATED_ARGS[@]} -gt 0 ]; then
+            bash ./install.sh "${VALIDATED_ARGS[@]}"
+        else
+            bash ./install.sh
+        fi
+    else
+        log_error "Invalid or potentially malicious arguments detected"
+        exit 1
+    fi
 else
     bash ./install.sh
 fi

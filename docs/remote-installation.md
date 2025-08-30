@@ -10,15 +10,24 @@ irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox
 
 ## Advanced Usage
 
+### Installation supported parameters
+
+```powershell
+& ([scriptblock]::Create((irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/main/install-wsl-remote.ps1"))) -Help
+```
+
 ### Installation with WSL Reset (⚠️ **WARNING**: This will delete existing WSL data)
 
 ```powershell
-irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/main/install-wsl-remote.ps1" | iex -ResetWSL
+& ([scriptblock]::Create((irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/main/install-wsl-remote.ps1"))) -ResetWSL
 ```
 
 ### Installation with Custom Configuration
 
 ```powershell
+# Installation without requiring confirmation
+& ([scriptblock]::Create((irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/main/install-wsl-remote.ps1"))) -Force
+
 # Minimal development environment (specific sections)
 & ([scriptblock]::Create((irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/main/install-wsl-remote.ps1"))) -Sections @("prerequisites","apt_packages")
 

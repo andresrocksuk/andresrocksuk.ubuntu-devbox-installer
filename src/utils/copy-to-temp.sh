@@ -92,7 +92,7 @@ if [ -d "$TEMP_DIR/utils" ]; then
     log_info "Utils directory scripts made executable"
     
     # Verify critical utility scripts exist
-    CRITICAL_SCRIPTS=("logger.sh" "package-manager.sh" "version-checker.sh" "stream-logs.sh")
+    CRITICAL_SCRIPTS=("logger.sh" "package-manager.sh" "version-checker.sh" "installation-framework.sh" "stream-logs.sh")
     for script in "${CRITICAL_SCRIPTS[@]}"; do
         if [ -f "$TEMP_DIR/utils/$script" ]; then
             chmod +x "$TEMP_DIR/utils/$script"

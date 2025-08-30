@@ -1,15 +1,29 @@
 #!/bin/bash
 
 # nix installation script
-# Installs Nix package manager
+# Installs Nix package manager with multi-user and single-user support
 
 set -e
 
 # Get script directory for utilities
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-UTILS_DIR="$(dirname "$SCRIPT_DIR")/../utils"
+UTILS_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")/utils"
 
-# Source utilities if available
+# Configuration
+SOFTWARE_NAME="nix"
+SOFTWARE_DESCRIPTION="Nix package manager"
+COMMAND_NAME="nix"
+VERSION_FLAG="--version"
+INSTALLER_URL="https://nixos.org/nix/install"
+
+# Source the installation framework if available
+FRAMEWORK_AVAILABLE=false
+if [ -f "$UTILS_DIR/installation-framework.sh" ]; then
+    source "$UTILS_DIR/installation-framework.sh"
+    FRAMEWORK_AVAILABLE=true
+fi
+
+# Source utilities if available (fallback)
 if [ -f "$UTILS_DIR/logger.sh" ]; then
     source "$UTILS_DIR/logger.sh"
 else
@@ -26,113 +40,212 @@ if [ -f "$UTILS_DIR/environment-setup.sh" ]; then
 fi
 
 install_nix() {
-    log_info "Installing Nix package manager..."
+    log_info "Installing $SOFTWARE_DESCRIPTION..."
     
-    # Check if already installed
-    if command -v nix >/dev/null 2>&1; then
-        local current_version=$(nix --version 2>/dev/null | head -n1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "unknown")
-        log_info "Nix is already installed (version: $current_version)"
-        return 0
+    # Check if already installed (using framework if available)
+    if [ "$FRAMEWORK_AVAILABLE" = "true" ] && command -v check_already_installed >/dev/null 2>&1; then
+        if check_already_installed "$COMMAND_NAME" "$VERSION_FLAG"; then
+            configure_nix_experimental_features
+            return 0
+        fi
+    else
+        # Fallback: manual check
+        if command -v "$COMMAND_NAME" >/dev/null 2>&1; then
+            local current_version=$(nix --version 2>/dev/null | head -n1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "unknown")
+            log_info "$SOFTWARE_DESCRIPTION is already installed (version: $current_version)"
+            configure_nix_experimental_features
+            return 0
+        fi
     fi
     
-    # Check if running as root - Nix installation as root has issues
+    # Check if running as root - Nix installation as root has different requirements
     if [ "$EUID" -eq 0 ]; then
-        log_info "Running as root, using alternative Nix installation method..."
-        
-        # Clean up any existing nixbld group/users that might conflict
-        log_info "Cleaning up any existing Nix build users..."
-        for i in $(seq 1 32); do
-            if id "nixbld$i" >/dev/null 2>&1; then
-                sudo userdel "nixbld$i" 2>/dev/null || true
-            fi
-        done
-        
-        if getent group nixbld >/dev/null 2>&1; then
-            sudo groupdel nixbld 2>/dev/null || true
-        fi
-        
-        # Use the multi-user installer
-        log_info "Downloading Nix multi-user installer..."
-        local installer_url="https://nixos.org/nix/install"
-        local temp_installer="/tmp/nix-installer.sh"
-        
-        if command -v curl >/dev/null 2>&1; then
-            curl -L "$installer_url" -o "$temp_installer"
-        elif command -v wget >/dev/null 2>&1; then
-            wget -O "$temp_installer" "$installer_url"
+        install_nix_multiuser_as_root
+    else
+        install_nix_singleuser_as_user
+    fi
+    
+    # Configure environment and experimental features
+    setup_nix_environment
+    configure_nix_experimental_features
+    
+    # Verify installation using framework if available
+    if [ "$FRAMEWORK_AVAILABLE" = "true" ] && command -v verify_installation >/dev/null 2>&1; then
+        if verify_installation "$COMMAND_NAME" "$COMMAND_NAME --version" "nix"; then
+            local installed_version=$(get_command_version "$COMMAND_NAME" "$VERSION_FLAG" 2>/dev/null | head -n1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "unknown")
+            log_installation_result "$SOFTWARE_NAME" "success" "$installed_version"
+            show_nix_usage_info
+            return 0
         else
-            log_error "Neither curl nor wget available for downloading"
+            log_installation_result "$SOFTWARE_NAME" "failure" "" "verification failed"
             return 1
         fi
+    else
+        # Fallback verification
+        if command -v "$COMMAND_NAME" >/dev/null 2>&1; then
+            local installed_version=$(nix --version 2>/dev/null | head -n1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "unknown")
+            log_success "$SOFTWARE_DESCRIPTION installed successfully (version: $installed_version)"
+            show_nix_usage_info
+            return 0
+        else
+            log_error "$SOFTWARE_DESCRIPTION installation verification failed"
+            return 1
+        fi
+    fi
+}
+
+# Helper function to install Nix in multi-user mode as root
+install_nix_multiuser_as_root() {
+    log_info "Running as root, using multi-user Nix installation method..."
+    
+    # Clean up any existing nixbld group/users that might conflict
+    cleanup_existing_nix_users
+    
+    # Download and run installer
+    local temp_installer="/tmp/nix-installer.sh"
+    if ! download_nix_installer "$temp_installer"; then
+        return 1
+    fi
+    
+    # Install Nix in multi-user mode
+    log_info "Installing Nix (multi-user mode)..."
+    if [ "$FRAMEWORK_AVAILABLE" = "true" ] && command -v safely_execute >/dev/null 2>&1; then
+        if ! safely_execute "sh '$temp_installer' --daemon --yes" "Failed to install Nix in multi-user mode"; then
+            rm -f "$temp_installer"
+            return 1
+        fi
+    else
+        # Fallback execution
+        if ! sh "$temp_installer" --daemon --yes; then
+            log_error "Failed to install Nix in multi-user mode"
+            rm -f "$temp_installer"
+            return 1
+        fi
+    fi
+    
+    # Clean up installer
+    rm -f "$temp_installer"
+    
+    # Source Nix environment for multi-user installation
+    if [ -f "/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh" ]; then
+        log_info "Sourcing Nix daemon environment..."
+        source /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+    fi
+}
+
+# Helper function to install Nix in single-user mode as regular user
+install_nix_singleuser_as_user() {
+    log_info "Installing Nix in single-user mode..."
+    
+    # Check if /nix directory already exists and fix permissions if needed
+    if [ -d "/nix" ]; then
+        log_info "Nix directory already exists, checking installation..."
         
-        # Make installer executable
-        chmod +x "$temp_installer"
+        # Check if the directory is writable, if not, fix permissions
+        if [ ! -w "/nix" ]; then
+            log_info "Fixing /nix directory permissions..."
+            sudo chown -R "$USER" /nix
+        fi
         
-        # Install Nix in multi-user mode
-        log_info "Installing Nix (multi-user mode)..."
-        sh "$temp_installer" --daemon --yes
-        
-        # Clean up installer
-        rm -f "$temp_installer"
-        
-        # Source Nix environment for multi-user installation
         if [ -f "/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh" ]; then
-            log_info "Sourcing Nix daemon environment..."
+            log_info "Sourcing existing Nix environment..."
             source /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
         fi
-        
+    fi
+    
+    # Download and run installer
+    local temp_installer="/tmp/nix-installer.sh"
+    if ! download_nix_installer "$temp_installer"; then
+        return 1
+    fi
+    
+    # Install Nix in single-user mode for non-root
+    log_info "Installing Nix (single-user mode)..."
+    if [ "$FRAMEWORK_AVAILABLE" = "true" ] && command -v safely_execute >/dev/null 2>&1; then
+        if ! safely_execute "sh '$temp_installer' --no-daemon" "Failed to install Nix in single-user mode"; then
+            rm -f "$temp_installer"
+            return 1
+        fi
     else
-        # Original single-user installation for non-root users
-        # Check if /nix directory already exists
-        if [ -d "/nix" ]; then
-            log_info "Nix directory already exists, checking installation..."
-            
-            # Check if the directory is writable, if not, fix permissions
-            if [ ! -w "/nix" ]; then
-                log_info "Fixing /nix directory permissions..."
-                sudo chown -R "$USER" /nix
-            fi
-            
-            if [ -f "/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh" ]; then
-                log_info "Sourcing existing Nix environment..."
-                source /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
-            fi
+        # Fallback execution
+        if ! sh "$temp_installer" --no-daemon; then
+            log_error "Failed to install Nix in single-user mode"
+            rm -f "$temp_installer"
+            return 1
+        fi
+    fi
+    
+    # Clean up installer
+    rm -f "$temp_installer"
+    
+    # Source Nix environment
+    if [ -f "$HOME/.nix-profile/etc/profile.d/nix.sh" ]; then
+        log_info "Sourcing Nix environment..."
+        source "$HOME/.nix-profile/etc/profile.d/nix.sh"
+    fi
+}
+
+# Helper function to download Nix installer
+download_nix_installer() {
+    local temp_installer="$1"
+    
+    log_info "Downloading Nix installer..."
+    
+    # Check dependencies and download
+    if [ "$FRAMEWORK_AVAILABLE" = "true" ] && command -v check_dependencies >/dev/null 2>&1; then
+        if ! check_dependencies "curl wget"; then
+            return 1
         fi
         
-        # Download and install Nix
-        log_info "Downloading Nix installer..."
-        
-        # Use the official Nix installer
-        local installer_url="https://nixos.org/nix/install"
-        local temp_installer="/tmp/nix-installer.sh"
-        
         if command -v curl >/dev/null 2>&1; then
-            curl -L "$installer_url" -o "$temp_installer"
+            if ! safely_execute "curl -L '$INSTALLER_URL' -o '$temp_installer'" "Failed to download Nix installer with curl"; then
+                return 1
+            fi
         elif command -v wget >/dev/null 2>&1; then
-            wget -O "$temp_installer" "$installer_url"
+            if ! safely_execute "wget -O '$temp_installer' '$INSTALLER_URL'" "Failed to download Nix installer with wget"; then
+                return 1
+            fi
+        fi
+    else
+        # Fallback download
+        if command -v curl >/dev/null 2>&1; then
+            curl -L "$INSTALLER_URL" -o "$temp_installer" || {
+                log_error "Failed to download Nix installer with curl"
+                return 1
+            }
+        elif command -v wget >/dev/null 2>&1; then
+            wget -O "$temp_installer" "$INSTALLER_URL" || {
+                log_error "Failed to download Nix installer with wget"
+                return 1
+            }
         else
             log_error "Neither curl nor wget available for downloading"
             return 1
         fi
-        
-        # Make installer executable
-        chmod +x "$temp_installer"
-        
-        # Install Nix in single-user mode for non-root
-        log_info "Installing Nix (single-user mode)..."
-        sh "$temp_installer" --no-daemon
-        
-        # Clean up installer
-        rm -f "$temp_installer"
-        
-        # Source Nix environment
-        if [ -f "$HOME/.nix-profile/etc/profile.d/nix.sh" ]; then
-            log_info "Sourcing Nix environment..."
-            source "$HOME/.nix-profile/etc/profile.d/nix.sh"
-        fi
     fi
     
-    # Add to shell profiles
+    # Make installer executable
+    chmod +x "$temp_installer"
+    return 0
+}
+
+# Helper function to cleanup existing nix build users
+cleanup_existing_nix_users() {
+    log_info "Cleaning up any existing Nix build users..."
+    for i in $(seq 1 32); do
+        if id "nixbld$i" >/dev/null 2>&1; then
+            sudo userdel "nixbld$i" 2>/dev/null || true
+        fi
+    done
+    
+    if getent group nixbld >/dev/null 2>&1; then
+        sudo groupdel nixbld 2>/dev/null || true
+    fi
+}
+
+# Helper function to setup Nix environment
+setup_nix_environment() {
+    # Determine the correct Nix profile script
     local nix_profile_script=""
     if [ -f "$HOME/.nix-profile/etc/profile.d/nix.sh" ]; then
         nix_profile_script="$HOME/.nix-profile/etc/profile.d/nix.sh"
@@ -145,30 +258,59 @@ install_nix() {
         
         # Always setup system-wide environment regardless of utility availability
         if sudo -n true 2>/dev/null; then
-            # Create system-wide environment setup for nix
-            log_info "Creating system-wide Nix environment configuration..."
-            
-            # Add to system profile
-            local system_profile="/etc/profile.d/nix.sh"
-            if [ ! -f "$system_profile" ]; then
-                sudo tee "$system_profile" > /dev/null << EOF
+            create_systemwide_nix_environment "$nix_profile_script"
+            setup_nix_skeleton_files "$nix_profile_script"
+            create_nix_command_wrappers "$nix_profile_script"
+        else
+            log_warn "Cannot setup system-wide environment (no sudo access)"
+        fi
+        
+        # Use environment setup utility if available for user environment
+        if command -v add_to_path >/dev/null 2>&1; then
+            # Add Nix to PATH
+            if [ -d "/nix/var/nix/profiles/default/bin" ]; then
+                add_to_path "/nix/var/nix/profiles/default/bin" "Nix package manager binaries"
+            elif [ -d "$HOME/.nix-profile/bin" ]; then
+                add_to_path "$HOME/.nix-profile/bin" "Nix package manager binaries"
+            fi
+        else
+            # Fallback environment setup
+            setup_nix_environment_fallback "$nix_profile_script"
+        fi
+    else
+        log_warn "Could not find Nix profile script for environment setup"
+    fi
+}
+
+# Helper function to create system-wide Nix environment
+create_systemwide_nix_environment() {
+    local nix_profile_script="$1"
+    
+    log_info "Creating system-wide Nix environment configuration..."
+    
+    # Add to system profile
+    local system_profile="/etc/profile.d/nix.sh"
+    if [ ! -f "$system_profile" ]; then
+        sudo tee "$system_profile" > /dev/null << EOF
 #!/bin/bash
 # Nix package manager environment setup
 if [ -f "$nix_profile_script" ]; then
     source "$nix_profile_script"
 fi
 EOF
-                sudo chmod +x "$system_profile"
-                log_info "Created system profile: $system_profile"
-            fi
-            
-            # Update skeleton files for new users
-            setup_nix_skeleton_files "$nix_profile_script"
-            
-            # Create system-wide nix wrapper if needed
-            if [ ! -f "/usr/local/bin/nix" ] && [ -f "/nix/var/nix/profiles/default/bin/nix" ]; then
-                sudo mkdir -p /usr/local/bin
-                sudo tee "/usr/local/bin/nix" > /dev/null << EOF
+        sudo chmod +x "$system_profile"
+        log_info "Created system profile: $system_profile"
+    fi
+}
+
+# Helper function to create Nix command wrappers
+create_nix_command_wrappers() {
+    local nix_profile_script="$1"
+    
+    # Create system-wide nix wrapper if needed
+    if [ ! -f "/usr/local/bin/nix" ] && [ -f "/nix/var/nix/profiles/default/bin/nix" ]; then
+        sudo mkdir -p /usr/local/bin
+        sudo tee "/usr/local/bin/nix" > /dev/null << EOF
 #!/bin/bash
 # System-wide Nix wrapper script
 if [ -f "$nix_profile_script" ]; then
@@ -176,14 +318,14 @@ if [ -f "$nix_profile_script" ]; then
 fi
 exec /nix/var/nix/profiles/default/bin/nix "\$@"
 EOF
-                sudo chmod +x "/usr/local/bin/nix"
-                log_info "Created system-wide nix wrapper: /usr/local/bin/nix"
-                
-                # Create wrappers for other common Nix commands
-                for cmd in nix-env nix-channel nix-store nix-build nix-shell; do
-                    if [ -f "/nix/var/nix/profiles/default/bin/$cmd" ]; then
-                        log_info "Creating wrapper for $cmd..."
-                        sudo tee "/usr/local/bin/$cmd" > /dev/null << EOF
+        sudo chmod +x "/usr/local/bin/nix"
+        log_info "Created system-wide nix wrapper: /usr/local/bin/nix"
+        
+        # Create wrappers for other common Nix commands
+        for cmd in nix-env nix-channel nix-store nix-build nix-shell; do
+            if [ -f "/nix/var/nix/profiles/default/bin/$cmd" ]; then
+                log_info "Creating wrapper for $cmd..."
+                sudo tee "/usr/local/bin/$cmd" > /dev/null << EOF
 #!/bin/bash
 # System-wide $cmd wrapper script
 if [ -f "$nix_profile_script" ]; then
@@ -191,47 +333,9 @@ if [ -f "$nix_profile_script" ]; then
 fi
 exec /nix/var/nix/profiles/default/bin/$cmd "\$@"
 EOF
-                        sudo chmod +x "/usr/local/bin/$cmd"
-                    fi
-                done
+                sudo chmod +x "/usr/local/bin/$cmd"
             fi
-        else
-            log_warn "Cannot setup system-wide environment (no sudo access)"
-        fi
-        
-        # Use environment setup utility if available for additional setup
-        if command -v source_script_in_profiles >/dev/null 2>&1; then
-            source_script_in_profiles "$nix_profile_script" "Nix package manager environment"
-        else
-            # Fallback to original method
-            setup_nix_environment_fallback "$nix_profile_script"
-        fi
-    fi
-    
-    # Verify installation
-    if command -v nix >/dev/null 2>&1; then
-        local installed_version=$(nix --version 2>/dev/null | head -n1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "unknown")
-        log_success "Nix installed successfully (version: $installed_version)"
-        
-        # Test run
-        log_info "Testing Nix..."
-        nix --help >/dev/null 2>&1 && log_success "Nix test successful"
-        
-        # Test sudo access if we have sudo privileges
-        if sudo -n true 2>/dev/null; then
-            log_info "Testing sudo access to Nix..."
-            if sudo nix --version >/dev/null 2>&1; then
-                log_success "Sudo access to Nix working correctly"
-            else
-                log_warn "Sudo access to Nix not working - you may need to restart your shell"
-            fi
-        fi
-        
-        return 0
-    else
-        log_error "Nix installation verification failed"
-        log_info "Note: You may need to restart your shell or source the Nix profile manually"
-        return 1
+        done
     fi
 }
 
@@ -389,8 +493,26 @@ configure_nix_experimental_features() {
     log_success "Nix experimental features configured successfully"
 }
 
-# Run installation
-install_nix
+# Helper function to show usage information
+show_nix_usage_info() {
+    log_info "To use Nix:"
+    log_info "  nix --help                 # Show help"
+    log_info "  nix-env -i <package>       # Install package"
+    log_info "  nix-shell -p <package>     # Temporary shell with package"
+    log_info "  nix develop                # Enter development shell (flakes)"
+    log_info "  nix run <package>          # Run package (flakes)"
+    log_info ""
+    log_info "Note: Restart your shell or source the profile to use Nix commands"
+    log_info "Experimental features (flakes) have been enabled for modern Nix usage"
+}
 
-# Configure experimental features after installation
-configure_nix_experimental_features
+# Run installation if script is executed directly
+if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
+    if install_nix; then
+        log_info "Nix installation completed successfully"
+        exit 0
+    else
+        log_error "Nix installation failed"
+        exit 1
+    fi
+fi

@@ -218,22 +218,84 @@ run_custom_installation_script() {
     
     log_install_start "$software (custom script)"
     
+    # Validate input parameters
+    if [ -z "$software" ]; then
+        log_install_failure "$software" "software name is required"
+        return 1
+    fi
+    
+    if [ -z "$script_path" ]; then
+        log_install_failure "$software" "script path is required"
+        return 1
+    fi
+    
+    # Validate script path security
+    if [[ "$script_path" =~ \.\./|\.\.\\ ]]; then
+        log_install_failure "$software" "script path contains directory traversal: $script_path"
+        return 1
+    fi
+    
     # Check if script exists
     if [ ! -f "$script_path" ]; then
         log_install_failure "$software" "installation script not found: $script_path"
         return 1
     fi
     
-    # Make script executable
-    chmod +x "$script_path"
+    # Check if script is readable
+    if [ ! -r "$script_path" ]; then
+        log_install_failure "$software" "installation script is not readable: $script_path"
+        return 1
+    fi
     
-    # Run installation script
-    # Note: Don't use log_command here to avoid double logging since the script logs itself
-    if bash "$script_path"; then
+    # Validate script is a bash script
+    if ! head -n 1 "$script_path" | grep -q "^#!/bin/bash"; then
+        log_warn "Script does not start with #!/bin/bash shebang: $script_path"
+    fi
+    
+    # Make script executable
+    if ! chmod +x "$script_path"; then
+        log_install_failure "$software" "failed to make script executable: $script_path"
+        return 1
+    fi
+    
+    # Log script execution context
+    log_info "Executing installation script: $script_path"
+    log_info "Force install: $force_install"
+    
+    # Set environment variables for the script
+    export FORCE_INSTALL="$force_install"
+    export INSTALLING_SOFTWARE="$software"
+    
+    # Run installation script with timeout and error capture
+    local script_output
+    local script_exit_code
+    
+    # Capture both stdout and stderr, but let them also display normally
+    if script_output=$(timeout 1800 bash "$script_path" 2>&1); then
+        script_exit_code=0
+    else
+        script_exit_code=$?
+    fi
+    
+    # Clean up environment variables
+    unset FORCE_INSTALL INSTALLING_SOFTWARE
+    
+    # Enhanced error reporting based on exit code
+    if [ $script_exit_code -eq 0 ]; then
         log_install_success "$software"
         return 0
+    elif [ $script_exit_code -eq 124 ]; then
+        log_install_failure "$software" "custom installation script timed out after 30 minutes"
+        return 1
     else
-        log_install_failure "$software" "custom installation script failed"
+        log_install_failure "$software" "custom installation script failed with exit code $script_exit_code"
+        # Log last few lines of output for debugging if available
+        if [ -n "$script_output" ]; then
+            log_error "Last output from script:"
+            echo "$script_output" | tail -n 5 | while read -r line; do
+                log_error "  $line"
+            done
+        fi
         return 1
     fi
 }
@@ -365,6 +427,185 @@ upgrade_all_packages() {
             return 1
         fi
     else
+        return 1
+    fi
+}
+
+# Function to validate installation prerequisites
+validate_installation_prerequisites() {
+    local prerequisites=("$@")
+    local missing_prereqs=()
+    
+    log_debug "Validating installation prerequisites: ${prerequisites[*]}"
+    
+    for prereq in "${prerequisites[@]}"; do
+        # Validate prerequisite name
+        if [[ ! "$prereq" =~ ^[a-zA-Z0-9._-]+$ ]]; then
+            log_error "Invalid prerequisite name: $prereq"
+            return 1
+        fi
+        
+        if ! command_exists "$prereq"; then
+            missing_prereqs+=("$prereq")
+        fi
+    done
+    
+    if [ ${#missing_prereqs[@]} -gt 0 ]; then
+        log_error "Missing prerequisites: ${missing_prereqs[*]}"
+        return 1
+    fi
+    
+    log_debug "All prerequisites are satisfied"
+    return 0
+}
+
+# Function to sanitize version string
+sanitize_version_string() {
+    local version="$1"
+    
+    # Remove potentially dangerous characters, keep only version-related characters
+    local sanitized
+    sanitized=$(echo "$version" | tr -cd 'a-zA-Z0-9v._+-')
+    
+    # Limit length to prevent extremely long version strings
+    if [ ${#sanitized} -gt 100 ]; then
+        sanitized="${sanitized:0:100}"
+        log_warn "Version string truncated to 100 characters"
+    fi
+    
+    echo "$sanitized"
+}
+
+# Function to validate package installation parameters
+validate_package_params() {
+    local package_name="$1"
+    local version="$2"
+    
+    # Validate package name
+    if [ -z "$package_name" ]; then
+        log_error "Package name cannot be empty"
+        return 1
+    fi
+    
+    if [ ${#package_name} -gt 200 ]; then
+        log_error "Package name too long (max 200 characters)"
+        return 1
+    fi
+    
+    if [[ ! "$package_name" =~ ^[a-zA-Z0-9._+-]+$ ]]; then
+        log_error "Invalid package name format: $package_name"
+        return 1
+    fi
+    
+    # Validate version if provided
+    if [ -n "$version" ]; then
+        local sanitized_version
+        sanitized_version=$(sanitize_version_string "$version")
+        
+        if [ -z "$sanitized_version" ]; then
+            log_error "Invalid version format: $version"
+            return 1
+        fi
+    fi
+    
+    return 0
+}
+
+# Function to install APT package with enhanced validation
+install_apt_package_safe() {
+    local package_name="$1"
+    local version="${2:-latest}"
+    local force_install="${3:-false}"
+    
+    # Validate parameters
+    if ! validate_package_params "$package_name" "$version"; then
+        return 1
+    fi
+    
+    log_info "Installing APT package: $package_name ($version)"
+    
+    # Check if already installed (unless forced)
+    if [ "$force_install" != "true" ] && dpkg -l | grep -q "^ii.*$package_name "; then
+        local current_version
+        current_version=$(dpkg -l | grep "^ii.*$package_name " | awk '{print $3}' | head -n1)
+        log_info "$package_name is already installed (version: $current_version)"
+        return 0
+    fi
+    
+    # Update package lists
+    if ! update_package_lists; then
+        log_error "Failed to update package lists"
+        return 1
+    fi
+    
+    # Install package
+    local install_cmd="sudo apt-get install -y"
+    
+    if [ "$version" != "latest" ]; then
+        # Sanitize version for command
+        version=$(sanitize_version_string "$version")
+        install_cmd="$install_cmd ${package_name}=${version}"
+    else
+        install_cmd="$install_cmd $package_name"
+    fi
+    
+    if log_command "$install_cmd"; then
+        log_success "$package_name installed successfully"
+        return 0
+    else
+        log_error "Failed to install $package_name"
+        return 1
+    fi
+}
+
+# Function to safely install custom script with validation
+run_custom_installation_script_safe() {
+    local software_name="$1"
+    local script_path="$2"
+    local force_install="${3:-false}"
+    
+    # Validate software name
+    if [[ ! "$software_name" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+        log_error "Invalid software name: $software_name"
+        return 1
+    fi
+    
+    # Validate script path
+    if [ ! -f "$script_path" ]; then
+        log_error "Installation script not found: $script_path"
+        return 1
+    fi
+    
+    # Check if script path is within expected directory structure
+    if [[ ! "$script_path" =~ /software-scripts/[a-zA-Z0-9_-]+/install\.sh$ ]]; then
+        log_error "Script path does not match expected pattern: $script_path"
+        return 1
+    fi
+    
+    # Check script permissions and ownership
+    if [ ! -r "$script_path" ]; then
+        log_error "Script is not readable: $script_path"
+        return 1
+    fi
+    
+    if [ ! -x "$script_path" ]; then
+        log_warn "Script is not executable, making it executable: $script_path"
+        chmod +x "$script_path"
+    fi
+    
+    log_info "Running custom installation script for $software_name"
+    log_debug "Script path: $script_path"
+    
+    # Set environment variables for the script
+    export FORCE_INSTALL="$force_install"
+    export INSTALLATION_SOFTWARE_NAME="$software_name"
+    
+    # Run the script in a subshell to contain any environment changes
+    if (cd "$(dirname "$script_path")" && bash "./$(basename "$script_path")"); then
+        log_success "Custom installation script completed successfully: $software_name"
+        return 0
+    else
+        log_error "Custom installation script failed: $software_name"
         return 1
     fi
 }

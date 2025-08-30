@@ -6,10 +6,24 @@
 set -e
 
 # Get script directory for utilities
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-UTILS_DIR="$(dirname "$SCRIPT_DIR")/../utils"
+OH_MY_ZSH_SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+UTILS_DIR="$(dirname "$(dirname "$OH_MY_ZSH_SCRIPT_DIR")")/utils"
 
-# Source utilities if available
+# Configuration
+SOFTWARE_NAME="oh-my-zsh"
+SOFTWARE_DESCRIPTION="Oh My Zsh framework"
+COMMAND_NAME="zsh"
+VERSION_FLAG="--version"
+OH_MY_ZSH_DIR="$HOME/.oh-my-zsh"
+
+# Source the installation framework if available
+FRAMEWORK_AVAILABLE=false
+if [ -f "$UTILS_DIR/installation-framework.sh" ]; then
+    source "$UTILS_DIR/installation-framework.sh"
+    FRAMEWORK_AVAILABLE=true
+fi
+
+# Source utilities if available (fallback)
 if [ -f "$UTILS_DIR/logger.sh" ]; then
     source "$UTILS_DIR/logger.sh"
 else
@@ -21,32 +35,51 @@ else
 fi
 
 # Source shared oh-my-zsh configuration
-if [ -f "$SCRIPT_DIR/oh-my-zsh-config.sh" ]; then
-    source "$SCRIPT_DIR/oh-my-zsh-config.sh"
+if [ -f "$OH_MY_ZSH_SCRIPT_DIR/oh-my-zsh-config.sh" ]; then
+    source "$OH_MY_ZSH_SCRIPT_DIR/oh-my-zsh-config.sh"
 else
-    log_error "oh-my-zsh-config.sh not found in $SCRIPT_DIR"
+    log_error "oh-my-zsh-config.sh not found in $OH_MY_ZSH_SCRIPT_DIR"
     exit 1
 fi
 
 install_oh_my_zsh() {
-    log_info "Installing oh-my-zsh..."
+    log_info "Installing $SOFTWARE_DESCRIPTION..."
     
-    # Check if zsh is installed
-    if ! command -v zsh >/dev/null 2>&1; then
-        log_error "zsh is not installed. Please install zsh first."
-        return 1
+    # Check if zsh is installed (prerequisite)
+    if [ "$FRAMEWORK_AVAILABLE" = "true" ] && command -v check_dependencies >/dev/null 2>&1; then
+        if ! check_dependencies "zsh"; then
+            log_error "zsh is required but not installed. Please install zsh first."
+            return 1
+        fi
+    else
+        # Fallback check
+        if ! command -v zsh >/dev/null 2>&1; then
+            log_error "zsh is not installed. Please install zsh first."
+            return 1
+        fi
     fi
     
     # Check if oh-my-zsh is already installed
-    if [ -d "$HOME/.oh-my-zsh" ]; then
+    if [ -d "$OH_MY_ZSH_DIR" ]; then
         log_info "oh-my-zsh is already installed"
         
         # Update oh-my-zsh
         log_info "Updating oh-my-zsh..."
-        cd "$HOME/.oh-my-zsh" && git pull >/dev/null 2>&1 || log_warn "Could not update oh-my-zsh"
+        if [ "$FRAMEWORK_AVAILABLE" = "true" ] && command -v safely_execute >/dev/null 2>&1; then
+            safely_execute "cd '$OH_MY_ZSH_DIR' && git pull" "Could not update oh-my-zsh" || log_warn "Update failed"
+        else
+            (cd "$OH_MY_ZSH_DIR" && git pull >/dev/null 2>&1) || log_warn "Could not update oh-my-zsh"
+        fi
         
         # Still configure plugins and theme using shared configuration
         configure_oh_my_zsh
+        
+        if [ "$FRAMEWORK_AVAILABLE" = "true" ] && command -v log_installation_result >/dev/null 2>&1; then
+            log_installation_result "$SOFTWARE_NAME" "success" "already installed"
+        else
+            log_success "$SOFTWARE_DESCRIPTION configured successfully"
+        fi
+        show_oh_my_zsh_usage_info
         return 0
     fi
     
@@ -62,8 +95,32 @@ install_oh_my_zsh() {
     # Set up global scripts for new users
     setup_global_scripts
     
-    log_success "oh-my-zsh installed and configured successfully"
-    return 0
+    # Verify installation - check if Oh My Zsh directory exists
+    if [ -d "$OH_MY_ZSH_DIR" ]; then
+        log_success "$SOFTWARE_DESCRIPTION installed and configured successfully"
+        show_oh_my_zsh_usage_info
+        return 0
+    else
+        log_error "$SOFTWARE_DESCRIPTION installation verification failed"
+        log_error "oh-my-zsh installation failed - verification failed"
+        log_error "Oh My Zsh installation failed"
+        return 1
+    fi
+}
+
+# Helper function to show usage information
+show_oh_my_zsh_usage_info() {
+    log_info "Oh My Zsh has been installed and configured!"
+    log_info "To start using it:"
+    log_info "  exec zsh                   # Start a new zsh session"
+    log_info "  zsh                        # Switch to zsh shell"
+    log_info ""
+    log_info "Features installed:"
+    log_info "  - Popular plugins (git, docker, kubectl, etc.)"
+    log_info "  - Powerlevel10k theme"
+    log_info "  - Custom aliases and functions"
+    log_info ""
+    log_info "To make zsh your default shell, run: chsh -s $(which zsh)"
 }
 
 install_via_official_installer() {
@@ -136,7 +193,7 @@ setup_global_scripts() {
     
     # Copy shared configuration to global location
     sudo mkdir -p /usr/local/share/oh-my-zsh
-    if sudo cp "$SCRIPT_DIR/oh-my-zsh-config.sh" /usr/local/share/oh-my-zsh/; then
+    if sudo cp "$OH_MY_ZSH_SCRIPT_DIR/oh-my-zsh-config.sh" /usr/local/share/oh-my-zsh/; then
         log_info "Copied shared configuration to /usr/local/share/oh-my-zsh/"
     else
         log_error "Failed to copy shared configuration"
@@ -210,5 +267,13 @@ USERSCRIPT
     log_success "Global scripts configured successfully - all users will get consistent Oh My Zsh setup"
 }
 
-# Run installation
-install_oh_my_zsh
+# Run installation if script is executed directly
+if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
+    if install_oh_my_zsh; then
+        log_info "Oh My Zsh installation completed successfully"
+        exit 0
+    else
+        log_error "Oh My Zsh installation failed"
+        exit 1
+    fi
+fi

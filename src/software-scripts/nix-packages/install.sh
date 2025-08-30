@@ -7,10 +7,22 @@ set -e
 
 # Get script directory for utilities
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-UTILS_DIR="$(dirname "$SCRIPT_DIR")/../utils"
-WSL_DIR="$(dirname "$SCRIPT_DIR")/.."
+UTILS_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")/utils"
+WSL_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 
-# Source utilities if available
+# Configuration
+SOFTWARE_NAME="nix-packages"
+SOFTWARE_DESCRIPTION="Nix packages via flakes"
+FLAKE_FILE="$WSL_DIR/install.flake.nix"
+
+# Source the installation framework if available
+FRAMEWORK_AVAILABLE=false
+if [ -f "$UTILS_DIR/installation-framework.sh" ]; then
+    source "$UTILS_DIR/installation-framework.sh"
+    FRAMEWORK_AVAILABLE=true
+fi
+
+# Source utilities if available (fallback)
 if [ -f "$UTILS_DIR/logger.sh" ]; then
     source "$UTILS_DIR/logger.sh"
 else
@@ -20,6 +32,63 @@ else
     log_success() { echo "[SUCCESS] $1"; }
     log_warn() { echo "[WARN] $1"; }
 fi
+
+# Main installation function using framework patterns
+install_nix_packages() {
+    log_info "Installing $SOFTWARE_DESCRIPTION..."
+    
+    # Check if Nix is available (prerequisite)
+    if [ "$FRAMEWORK_AVAILABLE" = "true" ] && command -v check_dependencies >/dev/null 2>&1; then
+        if ! check_dependencies "nix"; then
+            log_error "Nix is required but not available. Please install Nix first."
+            return 1
+        fi
+    else
+        # Fallback check
+        if ! check_nix_available; then
+            log_error "Nix is required but not available. Please install Nix first."
+            return 1
+        fi
+    fi
+    
+    # Setup sudo access to Nix if needed
+    setup_sudo_nix_access
+    
+    # Install from local flake
+    if [ -f "$FLAKE_FILE" ]; then
+        if install_local_flake "$FLAKE_FILE" "Default development environment"; then
+            if [ "$FRAMEWORK_AVAILABLE" = "true" ] && command -v log_installation_result >/dev/null 2>&1; then
+                log_installation_result "$SOFTWARE_NAME" "success" "via flake"
+            else
+                log_success "$SOFTWARE_DESCRIPTION installed successfully via flake"
+            fi
+            show_nix_packages_usage_info
+            return 0
+        else
+            if [ "$FRAMEWORK_AVAILABLE" = "true" ] && command -v log_installation_result >/dev/null 2>&1; then
+                log_installation_result "$SOFTWARE_NAME" "failure" "" "flake installation failed"
+            else
+                log_error "$SOFTWARE_DESCRIPTION installation failed"
+            fi
+            return 1
+        fi
+    else
+        log_warn "No flake file found at $FLAKE_FILE"
+        log_info "Skipping Nix packages installation"
+        return 0
+    fi
+}
+
+# Helper function to show usage information
+show_nix_packages_usage_info() {
+    log_info "Nix packages have been installed via flakes"
+    log_info "To use the development environment:"
+    log_info "  nix develop                # Enter development shell"
+    log_info "  nix run <package>          # Run specific package"
+    log_info "  nix shell <package>        # Temporary shell with package"
+    log_info ""
+    log_info "The packages are available system-wide and in your user environment"
+}
 
 # Function to check if Nix is available
 check_nix_available() {
@@ -557,5 +626,13 @@ install_nix_packages() {
     log_success "Nix packages installation completed!"
 }
 
-# Run installation
-install_nix_packages
+# Run installation if script is executed directly
+if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
+    if install_nix_packages; then
+        log_info "Nix packages installation completed successfully"
+        exit 0
+    else
+        log_error "Nix packages installation failed"
+        exit 1
+    fi
+fi

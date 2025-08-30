@@ -12,34 +12,28 @@
 # - sudo access
 # - build-essential packages (will be installed automatically)
 
-# Determine script directory
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-WSL_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+# Get script directory for reliable path resolution
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+UTILS_DIR="$SCRIPT_DIR/../../utils"
 
-# Source utilities if available (for integration with main installer)
-if [ -f "$WSL_DIR/utils/logger.sh" ]; then
-    source "$WSL_DIR/utils/logger.sh"
+# Source installation framework
+if [ -f "$UTILS_DIR/installation-framework.sh" ]; then
+    source "$UTILS_DIR/installation-framework.sh"
 else
-    # Standalone logging functions
-    log_info() { echo "[INFO] $1"; }
-    log_warn() { echo "[WARN] $1"; }
-    log_error() { echo "[ERROR] $1"; }
-    log_debug() { echo "[DEBUG] $1"; }
+    echo "Error: installation-framework.sh not found at $UTILS_DIR/installation-framework.sh"
+    exit 1
 fi
 
-# Source environment setup utilities
-if [ -f "$WSL_DIR/utils/environment-setup.sh" ]; then
-    source "$WSL_DIR/utils/environment-setup.sh"
-fi
-
-# Standalone execution support
-if [ "${BASH_SOURCE[0]}" == "${0}" ]; then
-    log_info "Running Homebrew multi-user installation script in standalone mode"
-fi
+# Enable error handling
+set -e
 
 # Configuration
 LINUXBREW_USER="linuxbrew"
 HOMEBREW_PREFIX="/home/linuxbrew/.linuxbrew"
+
+# Main installation function
+install_homebrew() {
+    log_section "Installing Homebrew"
 
 create_linuxbrew_user() {
     log_info "Creating dedicated linuxbrew user..."
@@ -477,8 +471,13 @@ setup_current_user_environment() {
 # Main execution
 if install_homebrew; then
     log_info "Homebrew tarball-based installation completed successfully"
-    exit 0
+    log_success "Homebrew installed successfully and added to environment"
+    return 0
 else
     log_error "Homebrew tarball-based installation failed"
-    exit 1
+    return 1
 fi
+}
+
+# Execute installation
+install_homebrew "$@"

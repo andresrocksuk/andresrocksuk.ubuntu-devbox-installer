@@ -99,8 +99,9 @@ When implementing new features:
 1. Create implementation plan in `.github/docs/` with date and feature name
 2. Break down into task groups with checkboxes for progress tracking
 3. Follow logical task sequence respecting dependencies
-4. Update `changelog.md` upon completion
-5. Generate final documentation in `docs/` directory
+4. Update `changelog.md` upon completion with summary of changes having executive summary and technical summary
+5. Latest updates done to the changelog should be added at the top of the file
+6. Generate final documentation in `docs/` directory
 
 ## Bash and PowerShell Scripts Security
 When implementing or modifying bash scripts, follow these security best practices:

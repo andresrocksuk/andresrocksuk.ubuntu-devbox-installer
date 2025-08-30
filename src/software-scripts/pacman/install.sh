@@ -4,34 +4,33 @@
 # This script attempts to install pacman package manager
 # Note: This is primarily for Arch-based systems, but included for completeness
 
-# Determine script directory
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-WSL_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+# Get script directory for reliable path resolution
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+UTILS_DIR="$SCRIPT_DIR/../../utils"
 
-# Source utilities if available (for integration with main installer)
-if [ -f "$WSL_DIR/utils/logger.sh" ]; then
-    source "$WSL_DIR/utils/logger.sh"
+# Source installation framework
+if [ -f "$UTILS_DIR/installation-framework.sh" ]; then
+    source "$UTILS_DIR/installation-framework.sh"
 else
-    # Standalone logging functions
-    log_info() { echo "[INFO] $1"; }
-    log_warn() { echo "[WARN] $1"; }
-    log_error() { echo "[ERROR] $1"; }
-    log_debug() { echo "[DEBUG] $1"; }
+    echo "Error: installation-framework.sh not found at $UTILS_DIR/installation-framework.sh"
+    exit 1
 fi
 
-# Standalone execution support
-if [ "${BASH_SOURCE[0]}" == "${0}" ]; then
-    log_info "Running pacman installation script in standalone mode"
-fi
+# Enable error handling
+set -e
 
+# Main installation function
 install_pacman() {
-    log_info "Starting pacman installation check..."
+    log_section "Installing Pacman Package Manager"
     
     # Check if pacman is already installed
-    if command -v pacman >/dev/null 2>&1; then
-        local current_version=$(pacman --version | head -n 1 | awk '{print $3}')
-        log_info "Pacman is already installed: $current_version"
-        return 0
+    if command_exists "pacman"; then
+        local current_version
+        current_version=$(get_command_version "pacman" "--version")
+        if [ "$current_version" != "NOT_INSTALLED" ] && [ "$current_version" != "UNKNOWN" ]; then
+            log_info "Pacman already installed: $current_version"
+            return 0
+        fi
     fi
     
     # Detect distribution
@@ -45,7 +44,7 @@ install_pacman() {
     case "$distro" in
         arch|manjaro|artix|endeavouros)
             log_info "Arch-based distribution detected. Pacman should already be available."
-            if ! command -v pacman >/dev/null 2>&1; then
+            if ! command_exists "pacman"; then
                 log_error "This is an Arch-based system but pacman is not found. System may be corrupted."
                 return 1
             fi
@@ -66,6 +65,21 @@ install_pacman() {
             install_pacman_generic
             ;;
     esac
+    
+    # Final verification and completion message
+    if command_exists "pacman"; then
+        local version
+        version=$(get_command_version "pacman" "--version")
+        log_success "Pacman installation completed successfully: $version"
+        log_warn "Note: On non-Arch systems, pacman may have limited functionality"
+        log_warn "Consider using the native package manager for your distribution"
+        return 0
+    else
+        log_error "Pacman installation failed"
+        log_info "This is normal on non-Arch Linux distributions"
+        log_info "Consider using your distribution's native package manager instead"
+        return 1
+    fi
 }
 
 install_pacman_on_debian() {
@@ -240,18 +254,34 @@ EOF
     log_warn "You will need to configure appropriate repositories in /usr/local/etc/pacman.conf"
 }
 
-# Main execution
-if install_pacman; then
-    log_info "Pacman installation completed successfully"
-    if command -v pacman >/dev/null 2>&1; then
-        log_info "Pacman version: $(pacman --version | head -n 1)"
-        log_warn "Note: On non-Arch systems, pacman may have limited functionality"
-        log_warn "Consider using the native package manager for your distribution"
+install_pacman_generic() {
+    log_warn "Attempting generic pacman installation..."
+    log_warn "This may not work on non-Arch systems"
+    
+    # Try to install pacman package if available
+    if command_exists "apt-get"; then
+        log_info "Installing pacman from package repository..."
+        if sudo apt-get update && sudo apt-get install -y pacman; then
+            log_info "Pacman installed from package repository"
+            return 0
+        fi
+    elif command_exists "yum"; then
+        log_info "Trying yum package manager..."
+        if sudo yum install -y pacman; then
+            log_info "Pacman installed via yum"
+            return 0
+        fi
+    elif command_exists "dnf"; then
+        log_info "Trying dnf package manager..."
+        if sudo dnf install -y pacman; then
+            log_info "Pacman installed via dnf"
+            return 0
+        fi
     fi
-    exit 0
-else
-    log_error "Pacman installation failed"
-    log_info "This is normal on non-Arch Linux distributions"
-    log_info "Consider using your distribution's native package manager instead"
-    exit 1
-fi
+    
+    log_error "Could not install pacman on this system"
+    return 1
+}
+
+# Execute installation
+install_pacman "$@"

@@ -22,6 +22,7 @@ export LOG_DIR="$SCRIPT_DIR/../logs"
 # Source utilities
 source "$UTILS_DIR/logger.sh"
 source "$UTILS_DIR/version-checker.sh"
+source "$UTILS_DIR/installation-framework.sh"
 
 # Global variables
 TEST_RESULTS=()
@@ -128,6 +129,43 @@ test_command() {
     fi
 }
 
+# Function to validate installation script integrity
+validate_script_integrity() {
+    local script_path="$1"
+    local script_name="$2"
+    
+    # Check if script exists and is readable
+    if [ ! -f "$script_path" ]; then
+        log_error "❌ $script_name: script not found at $script_path"
+        return 1
+    fi
+    
+    if [ ! -r "$script_path" ]; then
+        log_error "❌ $script_name: script not readable at $script_path"
+        return 1
+    fi
+    
+    # Check for bash shebang
+    if ! head -n 1 "$script_path" | grep -q "^#!/bin/bash"; then
+        log_warn "⚠️  $script_name: script does not start with #!/bin/bash"
+    fi
+    
+    # Check for framework integration (for refactored scripts)
+    if grep -q "installation-framework.sh" "$script_path"; then
+        log_debug "✅ $script_name: uses installation framework"
+        # Check for proper error handling
+        if grep -q "set -e" "$script_path"; then
+            log_debug "✅ $script_name: has error handling enabled"
+        else
+            log_warn "⚠️  $script_name: missing 'set -e' error handling"
+        fi
+    else
+        log_debug "ℹ️  $script_name: legacy script (no framework integration)"
+    fi
+    
+    return 0
+}
+
 # Function to test Python packages
 test_python_package() {
     local package="$1"
@@ -229,11 +267,18 @@ test_custom_software() {
     
     for i in $(seq 0 $((custom_software - 1))); do
         local name=$(yq eval ".custom_software[$i].name" "$CONFIG_FILE")
+        local script=$(yq eval ".custom_software[$i].script // \"\"" "$CONFIG_FILE")
         local version_command=$(yq eval ".custom_software[$i].version_command // \"$name\"" "$CONFIG_FILE")
         local version_flag=$(yq eval ".custom_software[$i].version_flag // \"--version\"" "$CONFIG_FILE")
         
         if [ -n "$name" ] && [ "$name" != "null" ]; then
             if should_test_software "$name"; then
+                # Validate script integrity if script path is available
+                if [ -n "$script" ] && [ "$script" != "null" ]; then
+                    local script_path="$SCRIPT_DIR/../software-scripts/$script"
+                    validate_script_integrity "$script_path" "$name"
+                fi
+                
                 # Handle special cases
                 case "$name" in
                     "nodejs-lts")

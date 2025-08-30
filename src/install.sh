@@ -30,6 +30,7 @@ else
 fi
 source "$UTILS_DIR/version-checker.sh"
 source "$UTILS_DIR/package-manager.sh"
+source "$UTILS_DIR/installation-framework.sh"
 
 # Global variables
 INSTALLATION_SUMMARY=()

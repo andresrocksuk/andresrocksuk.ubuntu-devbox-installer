@@ -5,20 +5,20 @@
 # Source required utilities
 # Handle being sourced from different directories
 if [ -n "${BASH_SOURCE[0]}" ]; then
-    SCRIPT_DIR="${BASH_SOURCE[0]%/*}"
-    if [ "$SCRIPT_DIR" = "${BASH_SOURCE[0]}" ]; then
-        SCRIPT_DIR="."
+    PKG_SCRIPT_DIR="${BASH_SOURCE[0]%/*}"
+    if [ "$PKG_SCRIPT_DIR" = "${BASH_SOURCE[0]}" ]; then
+        PKG_SCRIPT_DIR="."
     fi
-    SCRIPT_DIR="$(cd "$SCRIPT_DIR" && pwd)"
+    PKG_SCRIPT_DIR="$(cd "$PKG_SCRIPT_DIR" && pwd)"
 else
-    SCRIPT_DIR="${0%/*}"
-    if [ "$SCRIPT_DIR" = "$0" ]; then
-        SCRIPT_DIR="."
+    PKG_SCRIPT_DIR="${0%/*}"
+    if [ "$PKG_SCRIPT_DIR" = "$0" ]; then
+        PKG_SCRIPT_DIR="."
     fi
-    SCRIPT_DIR="$(cd "$SCRIPT_DIR" && pwd)"
+    PKG_SCRIPT_DIR="$(cd "$PKG_SCRIPT_DIR" && pwd)"
 fi
-source "$SCRIPT_DIR/logger.sh"
-source "$SCRIPT_DIR/version-checker.sh"
+source "$PKG_SCRIPT_DIR/logger.sh"
+source "$PKG_SCRIPT_DIR/version-checker.sh"
 
 # Function to update package lists
 update_package_lists() {
@@ -577,7 +577,7 @@ run_custom_installation_script_safe() {
     fi
     
     # Check if script path is within expected directory structure
-    if [[ ! "$script_path" =~ /software-scripts/[a-zA-Z0-9_-]+/install\.sh$ ]]; then
+    if [[ ! "$script_path" =~ /(shell-setup|custom-software|configurations)/[a-zA-Z0-9_-]*\.sh$ ]]; then
         log_error "Script path does not match expected pattern: $script_path"
         return 1
     fi

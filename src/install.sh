@@ -13,7 +13,6 @@ fi
 SCRIPT_DIR="$(cd "$SCRIPT_DIR" && pwd)"
 CONFIG_FILE="$SCRIPT_DIR/install.yaml"
 UTILS_DIR="$SCRIPT_DIR/utils"
-SCRIPTS_DIR="$SCRIPT_DIR/software-scripts"
 
 # Set log directory before sourcing logger
 export LOG_DIR="$SCRIPT_DIR/logs"
@@ -378,7 +377,7 @@ install_custom_software() {
             if [ "$DRY_RUN" = "true" ]; then
                 log_info "[DRY RUN] Would install: $name - $description"
             else
-                local script_path="$SCRIPTS_DIR/$script"
+                local script_path="$SCRIPT_DIR/$script"
                 if run_custom_installation_script "$name" "$script_path" "$FORCE_INSTALL"; then
                     INSTALLATION_SUMMARY+=("✅ $name (custom)")
                 else
@@ -497,7 +496,7 @@ install_nix_packages() {
         log_warn "Nix is not available. Installing Nix first..."
         
         # Try to install Nix using the custom software script
-        local nix_script="$SCRIPTS_DIR/nix/install.sh"
+        local nix_script="$SCRIPT_DIR/custom-software/nix/install.sh"
         
         if [ -f "$nix_script" ]; then
             log_info "Running Nix installation script..."
@@ -576,7 +575,7 @@ install_nix_packages() {
     fi
     
     # Run the nix-packages installation script
-    local nix_packages_script="$SCRIPTS_DIR/nix-packages/install.sh"
+    local nix_packages_script="$SCRIPT_DIR/custom-software/nix-packages/install.sh"
     
     if [ ! -f "$nix_packages_script" ]; then
         log_error "Nix packages installation script not found: $nix_packages_script"
@@ -624,7 +623,7 @@ run_shell_setup() {
                 if [[ "$script" == *"/"* ]] && [[ ! "$script" == *$'
 '* ]]; then
                     # This is a script file path
-                    local script_path="$SCRIPTS_DIR/$script"
+                    local script_path="$SCRIPT_DIR/$script"
                     if [ -f "$script_path" ]; then
                         if bash "$script_path"; then
                             log_success "Shell setup completed: $name"
@@ -681,7 +680,7 @@ run_configurations() {
                 # Check if this is a script path or inline script
                 if [[ "$script" == *"/"* ]] && [[ ! "$script" == *$'\n'* ]]; then
                     # This is a script file path
-                    local script_path="$SCRIPTS_DIR/$script"
+                    local script_path="$SCRIPT_DIR/$script"
                     if [ -f "$script_path" ]; then
                         if bash "$script_path"; then
                             log_success "Configuration completed: $name"

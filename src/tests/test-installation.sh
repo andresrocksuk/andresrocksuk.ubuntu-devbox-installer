@@ -275,7 +275,7 @@ test_custom_software() {
             if should_test_software "$name"; then
                 # Validate script integrity if script path is available
                 if [ -n "$script" ] && [ "$script" != "null" ]; then
-                    local script_path="$SCRIPT_DIR/../software-scripts/$script"
+                    local script_path="$SCRIPT_DIR/../$script"
                     validate_script_integrity "$script_path" "$name"
                 fi
                 

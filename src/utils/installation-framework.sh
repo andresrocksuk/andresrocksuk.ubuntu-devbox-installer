@@ -5,23 +5,23 @@
 
 # Handle being sourced from different directories
 if [ -n "${BASH_SOURCE[0]}" ]; then
-    SCRIPT_DIR="${BASH_SOURCE[0]%/*}"
-    if [ "$SCRIPT_DIR" = "${BASH_SOURCE[0]}" ]; then
-        SCRIPT_DIR="."
+    FRAMEWORK_SCRIPT_DIR="${BASH_SOURCE[0]%/*}"
+    if [ "$FRAMEWORK_SCRIPT_DIR" = "${BASH_SOURCE[0]}" ]; then
+        FRAMEWORK_SCRIPT_DIR="."
     fi
-    SCRIPT_DIR="$(cd "$SCRIPT_DIR" && pwd)"
+    FRAMEWORK_SCRIPT_DIR="$(cd "$FRAMEWORK_SCRIPT_DIR" && pwd)"
 else
-    SCRIPT_DIR="${0%/*}"
-    if [ "$SCRIPT_DIR" = "$0" ]; then
-        SCRIPT_DIR="."
+    FRAMEWORK_SCRIPT_DIR="${0%/*}"
+    if [ "$FRAMEWORK_SCRIPT_DIR" = "$0" ]; then
+        FRAMEWORK_SCRIPT_DIR="."
     fi
-    SCRIPT_DIR="$(cd "$SCRIPT_DIR" && pwd)"
+    FRAMEWORK_SCRIPT_DIR="$(cd "$FRAMEWORK_SCRIPT_DIR" && pwd)"
 fi
 
 # Source required utilities
-source "$SCRIPT_DIR/logger.sh"
-source "$SCRIPT_DIR/version-checker.sh"
-source "$SCRIPT_DIR/package-manager.sh"
+source "$FRAMEWORK_SCRIPT_DIR/logger.sh"
+source "$FRAMEWORK_SCRIPT_DIR/version-checker.sh"
+source "$FRAMEWORK_SCRIPT_DIR/package-manager.sh"
 
 # Global variables for installation framework
 declare -A INSTALL_FRAMEWORK_CONFIG=(

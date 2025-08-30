@@ -7,7 +7,7 @@ set -e
 
 # Get script directory for utilities
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-UTILS_DIR="$(dirname "$SCRIPT_DIR")/../utils"
+UTILS_DIR="$(dirname "$SCRIPT_DIR")/utils"
 
 # Source utilities if available
 if [ -f "$UTILS_DIR/logger.sh" ]; then

@@ -27,7 +27,9 @@ Welcome to the WSL Ubuntu DevBox Installer project! This guide will help you con
    ├── src/
    │   ├── install.sh              # Main installation engine
    │   ├── install.yaml            # Default configuration
-   │   ├── software-scripts/       # Individual software installers
+   │   ├── shell-setup/            # Shell configuration scripts  
+   │   ├── custom-software/        # Individual software installers
+   │   ├── configurations/         # Configuration scripts
    │   ├── utils/                  # Core utilities
    │   └── tests/                  # Testing framework
    ├── examples/                   # Example configurations
@@ -44,10 +46,11 @@ The most common contribution is adding support for new software packages.
 #### Step-by-Step Process
 
 1. **Create the installation script:**
+
    ```bash
-   mkdir src/software-scripts/your-software
-   touch src/software-scripts/your-software/install.sh
-   chmod +x src/software-scripts/your-software/install.sh
+   mkdir src/custom-software/your-software
+   touch src/custom-software/your-software/install.sh
+   chmod +x src/custom-software/your-software/install.sh
    ```
 
 2. **Follow the standard template:**

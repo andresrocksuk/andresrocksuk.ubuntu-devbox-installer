@@ -4,12 +4,12 @@
 # This script creates a basic neovim configuration
 
 # Determine script directory
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-WSL_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+UTILS_DIR="$(dirname "$SCRIPT_DIR")/utils"
 
 # Source utilities if available (for integration with main installer)
-if [ -f "$WSL_DIR/utils/logger.sh" ]; then
-    source "$WSL_DIR/utils/logger.sh"
+if [ -f "$UTILS_DIR/logger.sh" ]; then
+    source "$UTILS_DIR/logger.sh"
 else
     # Standalone logging functions
     log_info() { echo "[INFO] $1"; }

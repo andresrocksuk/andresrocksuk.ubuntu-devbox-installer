@@ -19,10 +19,10 @@ See: `enterprise.yaml` - Enterprise-focused tools and configurations
 ## 🛠️ Custom Installation Scripts
 
 ### Adding New Software
-See: `software-scripts/example-tool/` - Template for creating new installation scripts
+See: `custom-software/example-tool/` - Template for creating new installation scripts
 
-### Complex Dependencies
-See: `software-scripts/complex-example/` - Handling software with complex dependencies
+### Complex Installation Example
+See: `custom-software/complex-example/` - Handling software with complex dependencies
 
 ## 🧪 Testing Examples
 

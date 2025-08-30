@@ -106,14 +106,16 @@ else
     exit 1
 fi
 
-# Verify software-scripts directory
-if [ -d "$TEMP_DIR/software-scripts" ]; then
-    find "$TEMP_DIR/software-scripts" -name "*.sh" -type f -exec chmod +x {} \;
-    log_info "Software scripts made executable"
-else
-    log_error "software-scripts directory not found in temp directory"
-    exit 1
-fi
+# Verify script directories
+for dir in "shell-setup" "custom-software" "configurations"; do
+    if [ -d "$TEMP_DIR/$dir" ]; then
+        find "$TEMP_DIR/$dir" -name "*.sh" -type f -exec chmod +x {} \;
+        log_info "$dir scripts made executable"
+    else
+        log_error "$dir directory not found in temp directory"
+        exit 1
+    fi
+done
 
 # Display copy summary
 COPIED_FILES=$(find "$TEMP_DIR" -type f | wc -l)

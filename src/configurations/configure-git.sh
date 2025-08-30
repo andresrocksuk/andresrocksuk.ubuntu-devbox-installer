@@ -6,8 +6,8 @@
 set -e
 
 # Determine script directory
-GIT_SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-UTILS_DIR="$(dirname "$(dirname "$GIT_SCRIPT_DIR")")/utils"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+UTILS_DIR="$(dirname "$SCRIPT_DIR")/utils"
 
 # Source the installation framework
 if [ -f "$UTILS_DIR/installation-framework.sh" ]; then

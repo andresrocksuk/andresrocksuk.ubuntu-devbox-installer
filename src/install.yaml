@@ -91,146 +91,146 @@ shell_setup:
   - name: set-zsh-default
     description: "Set zsh as default shell for current and new users"
     enabled: true
-    script: shell-config/set-zsh-default.sh
+    script: shell-setup/set-zsh-default.sh
 
 # Custom software installations (not available via apt)
 custom_software:
   - name: oh-my-zsh
     description: "Zsh framework"
-    script: oh-my-zsh/install.sh
+    script: custom-software/oh-my-zsh/install.sh
     depends_on: [zsh]
 
   - name: fastfetch
     description: "System information tool"
-    script: fastfetch/install.sh
+    script: custom-software/fastfetch/install.sh
     version_command: fastfetch
     version_flag: --version
   
   - name: cuelang
     description: "Data validation and configuration language"
-    script: cuelang/install.sh
+    script: custom-software/cuelang/install.sh
     version_command: cue
     version_flag: version
   
   - name: yq
     description: "YAML processor"
-    script: yq/install.sh
+    script: custom-software/yq/install.sh
     version_command: yq
     version_flag: --version
   
   - name: nodejs-lts
     description: "Node.js LTS runtime"
-    script: nodejs/install.sh
+    script: custom-software/nodejs/install.sh
     version_command: node
     version_flag: --version
   
   - name: azure-cli
     description: "Azure command-line interface"
-    script: azure-cli/install.sh
+    script: custom-software/azure-cli/install.sh
     version_command: az
     version_flag: --version
   
   - name: azure-devops-cli
     description: "Azure DevOps CLI extension"
-    script: azure-devops-cli/install.sh
+    script: custom-software/azure-devops-cli/install.sh
     version_command: az
     version_flag: --version
     depends_on: [azure-cli]
   
   - name: kubectl
     description: "Kubernetes command-line tool"
-    script: kubectl/install.sh
+    script: custom-software/kubectl/install.sh
     version_command: kubectl
     version_flag: version --client
   
   - name: helm
     description: "Kubernetes package manager"
-    script: helm/install.sh
+    script: custom-software/helm/install.sh
     version_command: helm
     version_flag: version --short
   
   - name: ytt
     description: "YAML templating tool"
-    script: ytt/install.sh
+    script: custom-software/ytt/install.sh
     version_command: ytt
     version_flag: --version
   
   - name: dotnet-sdk
     description: ".NET SDK 8"
-    script: dotnet-sdk/install.sh
+    script: custom-software/dotnet-sdk/install.sh
     version_command: dotnet
     version_flag: --version
   
   - name: terraform
     description: "Infrastructure as code tool"
-    script: terraform/install.sh
+    script: custom-software/terraform/install.sh
     version_command: terraform
     version_flag: version
   
   - name: opentofu
     description: "Open-source Terraform alternative"
-    script: opentofu/install.sh
+    script: custom-software/opentofu/install.sh
     version_command: tofu
     version_flag: version
 
   - name: powershell
     description: "PowerShell Core"
-    script: powershell/install.sh
+    script: custom-software/powershell/install.sh
     version_command: pwsh
     version_flag: --version
 
   - name: homebrew
     description: "Linux package manager"
-    script: homebrew/install.sh
+    script: custom-software/homebrew/install.sh
     version_command: brew
     version_flag: --version
 
   - name: zoxide
     description: "Smart directory navigation tool"
-    script: zoxide/install.sh
+    script: custom-software/zoxide/install.sh
     version_command: zoxide
     version_flag: --version
 
   - name: nix
     description: "Nix package manager"
-    script: nix/install.sh
+    script: custom-software/nix/install.sh
     version_command: nix
     version_flag: --version
 
   - name: bat
     description: "Better cat with syntax highlighting"
-    script: bat/install.sh
+    script: custom-software/bat/install.sh
     version_command: bat
     version_flag: --version
 
   - name: fzf
     description: "Fuzzy finder for command line"
-    script: fzf/install.sh
+    script: custom-software/fzf/install.sh
     version_command: fzf
     version_flag: --version
 
   - name: nano
     description: "Simple text editor"
-    script: nano/install.sh
+    script: custom-software/nano/install.sh
     version_command: nano
     version_flag: --version
 
   - name: docker
     description: "Containerization platform"
-    script: docker/install.sh
+    script: custom-software/docker/install.sh
     version_command: docker
     version_flag: --version
 
   - name: docker-compose
     description: "Tool for defining multi-container applications"
-    script: docker-compose/install.sh
+    script: custom-software/docker-compose/install.sh
     version_command: docker-compose
     version_flag: --version
     depends_on: [docker]
 
   - name: k9s
     description: "Kubernetes CLI with enhanced UI"
-    script: k9s/install.sh
+    script: custom-software/k9s/install.sh
     version_command: k9s
     version_flag: version
 
@@ -285,22 +285,22 @@ configurations:
   - name: setup-python-user-bin
     description: "Setup system-wide access to Python user packages (pip --user, pipx)"
     enabled: true
-    script: shell-config/setup-python-user-bin.sh
+    script: configurations/setup-python-user-bin.sh
   
   - name: install-oh-my-zsh
     description: "Install Oh My Zsh for current user and create setup for new users"
     enabled: true
-    script: oh-my-zsh/setup-for-users.sh
+    script: configurations/setup-for-users.sh
   
   - name: configure-git
     description: "Configure git with basic settings"
     enabled: true
-    script: git/configure-git.sh
+    script: configurations/configure-git.sh
   
   - name: configure-neovim
     description: "Basic neovim configuration"
     enabled: true
-    script: neovim/configure-neovim.sh
+    script: configurations/configure-neovim.sh
 
 # Installation order (optional - defines dependency order)
 installation_order:

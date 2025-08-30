@@ -5,19 +5,19 @@
 # Source logger
 # Handle being sourced from different directories
 if [ -n "${BASH_SOURCE[0]}" ]; then
-    SCRIPT_DIR="${BASH_SOURCE[0]%/*}"
-    if [ "$SCRIPT_DIR" = "${BASH_SOURCE[0]}" ]; then
-        SCRIPT_DIR="."
+    VERSION_SCRIPT_DIR="${BASH_SOURCE[0]%/*}"
+    if [ "$VERSION_SCRIPT_DIR" = "${BASH_SOURCE[0]}" ]; then
+        VERSION_SCRIPT_DIR="."
     fi
-    SCRIPT_DIR="$(cd "$SCRIPT_DIR" && pwd)"
+    VERSION_SCRIPT_DIR="$(cd "$VERSION_SCRIPT_DIR" && pwd)"
 else
-    SCRIPT_DIR="${0%/*}"
-    if [ "$SCRIPT_DIR" = "$0" ]; then
-        SCRIPT_DIR="."
+    VERSION_SCRIPT_DIR="${0%/*}"
+    if [ "$VERSION_SCRIPT_DIR" = "$0" ]; then
+        VERSION_SCRIPT_DIR="."
     fi
-    SCRIPT_DIR="$(cd "$SCRIPT_DIR" && pwd)"
+    VERSION_SCRIPT_DIR="$(cd "$VERSION_SCRIPT_DIR" && pwd)"
 fi
-source "$SCRIPT_DIR/logger.sh"
+source "$VERSION_SCRIPT_DIR/logger.sh"
 
 # Function to check if a command exists
 command_exists() {

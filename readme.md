@@ -197,11 +197,13 @@ ubuntu-devbox-installer/
 ├── src/
 │   ├── install.sh               # Main installation engine
 │   ├── install.yaml             # Default configuration
-│   ├── software-scripts/        # Individual software installers
+│   ├── shell-setup/             # Shell configuration scripts
+│   ├── custom-software/         # Individual software installers
 │   │   ├── docker/
 │   │   ├── nodejs/
 │   │   ├── golang/
 │   │   └── [15+ more...]
+│   ├── configurations/          # Configuration scripts
 │   ├── utils/                   # Core utilities
 │   │   ├── logger.sh
 │   │   ├── package-manager.sh
@@ -243,12 +245,14 @@ Common troubleshooting steps:
 ### Adding New Software
 
 1. Create installation script:
+
    ```bash
-   mkdir src/software-scripts/my-tool
-   # Create src/software-scripts/my-tool/install.sh
+   mkdir src/custom-software/my-tool
+   # Create src/custom-software/my-tool/install.sh
    ```
 
 2. Add to configuration:
+
    ```yaml
    custom_software:
      - name: my-tool

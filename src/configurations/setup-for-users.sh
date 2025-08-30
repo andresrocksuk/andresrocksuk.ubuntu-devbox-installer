@@ -4,12 +4,12 @@
 # This script sets up Oh My Zsh for the current user and creates setup for new users
 
 # Determine script directory
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-WSL_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+UTILS_DIR="$(dirname "$SCRIPT_DIR")/utils"
 
 # Source utilities if available (for integration with main installer)
-if [ -f "$WSL_DIR/utils/logger.sh" ]; then
-    source "$WSL_DIR/utils/logger.sh"
+if [ -f "$UTILS_DIR/logger.sh" ]; then
+    source "$UTILS_DIR/logger.sh"
 else
     # Standalone logging functions
     log_info() { echo "[INFO] $1"; }
@@ -27,7 +27,7 @@ setup_oh_my_zsh() {
     log_info "Setting up Oh My Zsh..."
     
     # Get the script directory to use the existing oh-my-zsh installation script
-    OH_MY_ZSH_SCRIPT="$WSL_DIR/software-scripts/oh-my-zsh/install.sh"
+    OH_MY_ZSH_SCRIPT="$(dirname "$SCRIPT_DIR")/custom-software/oh-my-zsh/install.sh"
     
     # Install Oh My Zsh for the current user using our existing script
     # This script will also handle setting up global scripts for new users

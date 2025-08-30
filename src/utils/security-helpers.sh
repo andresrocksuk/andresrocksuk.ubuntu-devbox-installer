@@ -4,21 +4,21 @@
 
 # Handle being sourced from different directories
 if [ -n "${BASH_SOURCE[0]}" ]; then
-    SCRIPT_DIR="${BASH_SOURCE[0]%/*}"
-    if [ "$SCRIPT_DIR" = "${BASH_SOURCE[0]}" ]; then
-        SCRIPT_DIR="."
+    SECURITY_SCRIPT_DIR="${BASH_SOURCE[0]%/*}"
+    if [ "$SECURITY_SCRIPT_DIR" = "${BASH_SOURCE[0]}" ]; then
+        SECURITY_SCRIPT_DIR="."
     fi
-    SCRIPT_DIR="$(cd "$SCRIPT_DIR" && pwd)"
+    SECURITY_SCRIPT_DIR="$(cd "$SECURITY_SCRIPT_DIR" && pwd)"
 else
-    SCRIPT_DIR="${0%/*}"
-    if [ "$SCRIPT_DIR" = "$0" ]; then
-        SCRIPT_DIR="."
+    SECURITY_SCRIPT_DIR="${0%/*}"
+    if [ "$SECURITY_SCRIPT_DIR" = "$0" ]; then
+        SECURITY_SCRIPT_DIR="."
     fi
-    SCRIPT_DIR="$(cd "$SCRIPT_DIR" && pwd)"
+    SECURITY_SCRIPT_DIR="$(cd "$SECURITY_SCRIPT_DIR" && pwd)"
 fi
 
 # Source required utilities
-source "$SCRIPT_DIR/logger.sh"
+source "$SECURITY_SCRIPT_DIR/logger.sh"
 
 # Function to validate and sanitize URL input
 # Usage: validate_and_sanitize_url "url"

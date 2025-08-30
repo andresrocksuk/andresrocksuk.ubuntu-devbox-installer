@@ -23,7 +23,7 @@ source "$SCRIPT_DIR/security-helpers.sh"
 
 # Template directory
 TEMPLATE_DIR="$(cd "$SCRIPT_DIR/../../templates" && pwd)"
-SCRIPTS_DIR="$(cd "$SCRIPT_DIR/../software-scripts" && pwd)"
+SCRIPTS_DIR="$(cd "$SCRIPT_DIR/../custom-software" && pwd)"
 
 # Function to generate a new installation script from template
 # Usage: generate_install_script "software_name" "description" ["command_name"] ["version_flag"]
@@ -350,7 +350,7 @@ Commands:
 Examples:
     $0 generate docker "Docker Engine" docker --version
     $0 generate nodejs "Node.js LTS" node --version
-    $0 refactor src/software-scripts/git/install.sh
+    $0 refactor src/custom-software/git/install.sh
     $0 list
 
 EOF

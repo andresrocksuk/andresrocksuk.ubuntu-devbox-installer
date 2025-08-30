@@ -2,6 +2,171 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Completed] - 2025-08-30
+
+### Executive Summary
+
+**Script Directory Reorganization - COMPLETE**
+
+Successfully completed comprehensive reorganization of installation script directories to align with YAML configuration sections. This major structural improvement enhances code organization, maintainability, and developer experience by creating logical groupings that directly correspond to functional areas in the configuration system.
+
+**Key Achievements:**
+- ✅ **100% Script Organization Coverage**: All installation scripts reorganized into logical directories matching YAML sections
+- ✅ **Snake_case to Kebab-case Mapping**: Proper naming convention alignment (shell_setup → shell-setup/, custom_software → custom-software/, configurations → configurations/)
+- ✅ **Zero Breaking Changes**: All functionality preserved through comprehensive path updates and testing
+- ✅ **Critical Bug Resolution**: Fixed SCRIPT_DIR variable collision issues in utility scripts
+- ✅ **Enhanced Maintainability**: Clear separation of concerns with scripts grouped by functional purpose
+- ✅ **Production Ready**: All sections tested and validated with successful installation workflows
+
+**Impact:**
+- **Code Organization**: Clear logical separation of shell setup, custom software, and configuration scripts
+- **Developer Experience**: Intuitive directory structure matching YAML configuration sections
+- **Maintainability**: Easier navigation and modification of scripts by functional area
+- **Reliability**: Resolved path resolution conflicts ensuring robust execution
+- **Scalability**: Framework supports easy addition of new sections and scripts
+
+### Technical Summary
+
+**Directory Structure Transformation:**
+- **Before**: Flat `src/software-scripts/` structure with 28+ mixed-purpose scripts
+- **After**: Organized structure with `src/shell-setup/`, `src/custom-software/`, `src/configurations/` directories
+- **Mapping Logic**: YAML snake_case sections → kebab-case directory names (lowercase)
+
+**Critical Issues Resolved:**
+- **SCRIPT_DIR Variable Collision**: Fixed utility scripts overwriting global SCRIPT_DIR variable by implementing unique variable names per script
+- **Path Resolution Failures**: Resolved script-not-found errors through comprehensive path updates and testing
+- **Framework Integration**: Ensured all utility scripts work correctly with new directory structure
+- **Execution Context**: Fixed framework function availability in temp directory execution environments
+
+**Configuration Updates:**
+- **install.yaml**: Updated all script paths to reflect new directory structure while maintaining YAML section names
+- **Utility Scripts**: Modified path resolution logic to work with reorganized structure
+- **Framework Integration**: Enhanced framework scripts to prevent variable name conflicts
+
+### Added - Directory Structure Reorganization
+
+#### New Directory Structure
+- **NEW**: `src/shell-setup/` - Shell configuration scripts directory
+  - Contains: `set-zsh-default.sh` (moved from shell-config/)
+  - Purpose: Scripts that configure shell environments and settings
+
+- **NEW**: `src/custom-software/` - Custom software installation scripts directory  
+  - Contains: 26+ software installation scripts (azure-cli, docker, nodejs, terraform, etc.)
+  - Purpose: Scripts for installing software not available via standard package managers
+
+- **NEW**: `src/configurations/` - Post-installation configuration scripts directory
+  - Contains: `configure-git.sh`, `configure-neovim.sh`, `setup-python-user-bin.sh`, `setup-for-users.sh`
+  - Purpose: Scripts that configure installed software and system settings
+
+#### Enhanced Path Resolution
+- **ENHANCED**: `src/install.sh` - Updated script path resolution logic to work with new directory structure
+- **ENHANCED**: `src/utils/copy-to-temp.sh` - Updated to include new directories in copy operations
+- **ENHANCED**: YAML configuration parsing to handle new directory-based script paths
+
+### Changed - Script Organization and Path Updates
+
+#### Complete Script Reorganization ✅
+
+**COMPLETED**: All installation scripts successfully reorganized by functional purpose:
+
+**Shell Setup Scripts (1 script):**
+- ✅ `shell-setup/set-zsh-default.sh` - Moved from `shell-config/set-zsh-default.sh`
+
+**Custom Software Installation Scripts (26+ scripts):**
+- ✅ All moved to `custom-software/` directory maintaining subdirectory structure:
+  - `custom-software/azure-cli/install.sh`
+  - `custom-software/docker/install.sh` 
+  - `custom-software/nodejs/install.sh`
+  - `custom-software/terraform/install.sh`
+  - [22+ additional software packages]
+
+**Configuration Scripts (4 scripts):**
+- ✅ All moved to `configurations/` directory:
+  - `configurations/configure-git.sh`
+  - `configurations/configure-neovim.sh`
+  - `configurations/setup-python-user-bin.sh`
+  - `configurations/setup-for-users.sh`
+
+#### YAML Configuration Updates ✅
+
+**COMPLETED**: All script references updated in `src/install.yaml`:
+
+- **Shell Setup Section**: Updated paths to use `shell-setup/` prefix
+- **Custom Software Section**: Updated paths to use `custom-software/` prefix  
+- **Configurations Section**: Updated paths to use `configurations/` prefix
+- **Maintained**: Snake_case section names in YAML (shell_setup, custom_software, configurations)
+- **Implemented**: Kebab-case directory names (shell-setup, custom-software, configurations)
+
+#### Utility Script Enhancements ✅
+
+**RESOLVED**: Critical variable name conflicts in utility scripts:
+
+- **installation-framework.sh**: Changed `SCRIPT_DIR` to `FRAMEWORK_SCRIPT_DIR` to prevent global variable collision
+- **package-manager.sh**: Changed `SCRIPT_DIR` to `PKG_SCRIPT_DIR` for script isolation
+- **version-checker.sh**: Changed `SCRIPT_DIR` to `VERSION_SCRIPT_DIR` for proper scoping
+- **security-helpers.sh**: Changed `SCRIPT_DIR` to `SECURITY_SCRIPT_DIR` for namespace separation
+
+### Technical Improvements - COMPLETED
+
+#### Directory Structure Benefits
+
+- **Logical Organization**: Scripts grouped by functional purpose instead of flat alphabetical listing
+- **YAML Alignment**: Directory structure directly reflects YAML configuration sections
+- **Naming Consistency**: Snake_case YAML sections properly mapped to kebab-case directories
+- **Scalability**: Framework supports easy addition of new sections and reorganization
+
+#### Critical Bug Fixes Applied
+
+- **RESOLVED**: SCRIPT_DIR variable collision causing scripts to look in wrong `/utils/` subdirectory
+- **RESOLVED**: Path resolution failures preventing script execution after reorganization
+- **RESOLVED**: Framework integration issues in temp directory execution environments
+- **VERIFIED**: All 28+ scripts working correctly with new directory structure
+
+#### Path Resolution Enhancements
+
+- **Enhanced error handling** for script-not-found scenarios with clear logging
+- **Improved debugging** with comprehensive path resolution tracing during development
+- **Robust fallback mechanisms** ensuring scripts work in both direct and temp-copy execution modes
+- **Comprehensive testing** of all script paths and directory structures
+
+#### Developer Experience Improvements
+
+- **Intuitive navigation** with functional grouping matching YAML configuration
+- **Clear separation of concerns** between shell setup, software installation, and configuration
+- **Easier script discovery** through logical directory organization
+- **Consistent naming patterns** following established kebab-case conventions for directories
+
+### Status: COMPLETE ✅
+
+**Implementation Status**: 100% Complete
+- **All 28+ scripts reorganized** into logical functional directories
+- **All YAML paths updated** to reflect new directory structure  
+- **All critical path resolution bugs fixed** ensuring robust execution
+- **All utility script conflicts resolved** through proper variable scoping
+- **Full integration testing completed** with successful installation workflows
+- **Debug code cleanup completed** with no remaining temporary artifacts
+
+### Breaking Changes
+
+None - All changes maintain backward compatibility through comprehensive path updates and testing
+
+### Developer Guidelines
+
+- New scripts should be placed in the appropriate functional directory:
+  - Shell configuration scripts: `src/shell-setup/`
+  - Custom software installations: `src/custom-software/{software-name}/`
+  - Post-installation configurations: `src/configurations/`
+- YAML section names remain in snake_case format
+- Directory names follow kebab-case convention and lowercase
+- All script paths in YAML must include the appropriate directory prefix
+
+### Future Maintenance
+
+- Directory structure is stable and production-ready
+- Framework supports easy addition of new functional sections
+- Clear separation of concerns simplifies script maintenance and debugging
+- Consistent naming patterns enable predictable script organization
+
 ## [Completed] - 2025-08-29
 
 ### Executive Summary

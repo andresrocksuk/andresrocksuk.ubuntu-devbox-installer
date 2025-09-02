@@ -253,11 +253,11 @@ powershell_modules:
 # Nix packages to install via flake or individual packages
 nix_packages:
   # Option 1: Install packages from a local flake file
-  # - flake:
-  #     enabled: true
-  #     type: local  # local or remote
-  #     path: "install.flake.nix"  # relative to wsl/ directory
-  #     description: "Basic Nix packages (hello, figlet)"
+  - flake:
+      enabled: true
+      type: local  # local or remote
+      path: "install.flake.nix"  # relative to wsl/ directory
+      description: "Basic Nix packages (hello, figlet)"
   
   # Option 2: Install packages from a remote flake (GitHub repository)
   # - flake:
@@ -267,18 +267,18 @@ nix_packages:
   #     description: "Development tools from remote flake"
   
   # Option 3: Install individual packages directly
-  - packages:
-      enabled: true  # disabled when using flakes above
-      list:
-        - name: hello
-          package: "nixpkgs.hello"
-          description: "Hello world program"
-        - name: figlet
-          package: "nixpkgs.figlet"
-          description: "Text banner generator"
-        - name: cowsay
-          package: "nixpkgs.cowsay"
-          description: "ASCII cow with speech bubble"
+  # - packages:
+  #     enabled: true  # disabled when using flakes above
+  #     list:
+  #       - name: hello
+  #         package: "nixpkgs.hello"
+  #         description: "Hello world program"
+  #       - name: figlet
+  #         package: "nixpkgs.figlet"
+  #         description: "Text banner generator"
+  #       - name: cowsay
+  #         package: "nixpkgs.cowsay"
+  #         description: "ASCII cow with speech bubble"
 
 # Configuration tasks
 configurations:
@@ -297,10 +297,42 @@ configurations:
     enabled: true
     script: configurations/configure-git.sh
   
+  - name: configure-ssh-keys
+    description: "Configure SSH keys with symlinks from Windows profile"
+    enabled: true
+    script: configurations/configure-ssh-keys.sh
+  
   - name: configure-neovim
     description: "Basic neovim configuration"
     enabled: true
     script: configurations/configure-neovim.sh
+
+# Git SSH Keys Configuration
+git_ssh_keys:
+  enabled: true
+  keys:
+    - name: "github"
+      private_key: "id_ed25519"
+      public_key: "id_ed25519.pub"
+      hosts:
+        - name: "github"
+          hostname: "github.com"
+          user: "git"
+          # port: 22
+          # preferred_authentications: "publickey"
+          identities_only: true
+          # forward_agent: false
+          # server_alive_interval: 60
+          # server_alive_count_max: 5
+
+    - name: "azdo"
+      private_key: "azdo_rsa"
+      public_key: "azdo_rsa.pub"
+      hosts:
+        - name: "azdo"
+          hostname: "ssh.dev.azure.com"
+          user: "git"
+          identities_only: true
 
 # Installation order (optional - defines dependency order)
 installation_order:

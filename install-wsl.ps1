@@ -26,7 +26,7 @@ param(
     [ValidateScript({
         if ($_ -and $_.Trim() -ne "") {
             # Allow file paths (alphanumeric, dots, slashes, backslashes, dashes, underscores) or HTTPS URLs
-            if ($_ -notmatch '^([a-zA-Z0-9._/\\-]+\.ya?ml|https://[a-zA-Z0-9._/-]+)$') {
+            if ($_ -notmatch '^(src/config-profiles/[a-zA-Z0-9._/\\-]+\.ya?ml|[a-zA-Z0-9._/-]+\.ya?ml|https://[a-zA-Z0-9._/-]+)$') {
                 throw "Invalid config parameter: $_. Must be a .yaml/.yml file path or HTTPS URL."
             }
         }
@@ -65,7 +65,12 @@ param(
     Specify one or more configuration sections to run. Available sections: prerequisites, apt_packages, shell_setup, custom_software, python_packages, powershell_modules, nix_packages, configurations. If not specified, all sections will be run.
 
 .PARAMETER Config
-    Path to the configuration file or URL to remote configuration file. If not specified, the default install.yaml file will be used.
+    Path to a configuration profile file, profile name, or URL to remote configuration file. 
+    - Profile names: Use just the filename (e.g., "minimal-install.yaml") to auto-resolve from src/config-profiles/
+    - Relative paths: Use paths like "src/config-profiles/minimal-install.yaml" or "examples/data-science.yaml"
+    - Absolute paths: Full system paths to configuration files
+    - URLs: Remote HTTPS URLs to configuration files
+    If not specified, defaults to "src/config-profiles/full-install.yaml"
 
 .EXAMPLE
     .\install-wsl.ps1 -AutoInstall
@@ -90,6 +95,18 @@ param(
 .EXAMPLE
     .\install-wsl.ps1 -AutoInstall -Sections "custom_software"
     Run only the custom_software section and create default user
+
+.EXAMPLE
+    .\install-wsl.ps1 -AutoInstall -Config "minimal-install.yaml"
+    Use the minimal installation profile from src/config-profiles/
+
+.EXAMPLE
+    .\install-wsl.ps1 -AutoInstall -Config "src/config-profiles/minimal-install.yaml"
+    Use the minimal installation profile with explicit path
+
+.EXAMPLE
+    .\install-wsl.ps1 -AutoInstall -Config "examples/data-science.yaml"
+    Use a custom configuration profile from the examples directory
 
 .EXAMPLE
     .\install-wsl.ps1 -AutoInstall -Config "https://raw.githubusercontent.com/user/repo/main/config.yaml"
@@ -699,9 +716,9 @@ function Start-WSLInstallation {
                 
                 # Build the full command more safely
                 if ($configArgs) {
-                    wsl --distribution $Distribution --user root -- bash "$runInstallScript" "$TempScript" "$RunId" "$LogPath" "$configArgs"
+                    wsl --distribution $Distribution --user root -- bash "$runInstallScript" "$TempScript" "$RunId" "$LogPath" "$SourcePath" "$configArgs"
                 } else {
-                    wsl --distribution $Distribution --user root -- bash "$runInstallScript" "$TempScript" "$RunId" "$LogPath"
+                    wsl --distribution $Distribution --user root -- bash "$runInstallScript" "$TempScript" "$RunId" "$LogPath" "$SourcePath"
                 }
             }
             
@@ -947,8 +964,8 @@ function Start-WSLInstallation {
                 return $false
             }
         } else {
-                Write-ErrorMessage "Error running installation script: $exceptionMessage"
-                return $false
+            Write-ErrorMessage "Error running installation script: $exceptionMessage"
+            return $false
         }
     }
 }

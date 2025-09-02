@@ -1,0 +1,124 @@
+# WSL Installation Configuration
+# This file defines all software to be installed in the WSL environment
+
+# Metadata
+metadata:
+  name: "WSL Development Environment"
+  description: "Minimal development environment setup for WSL Ubuntu 24.04 LTS"
+  version: "1.0.0"
+  author: "andresrocksmx"
+  support_url: "https://github.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/issues"
+
+# Prerequisites that must be installed before other software
+prerequisites:
+  - curl
+  - wget
+  - yq
+  - software-properties-common
+  - apt-transport-https
+  - ca-certificates
+  - gnupg
+  - lsb-release
+
+# APT packages to install
+apt_packages:
+  - name: zsh
+    version: latest
+    description: "Z shell"
+
+  - name: git
+    version: latest
+    description: "Version control system"
+  
+  - name: jq
+    version: latest
+    description: "Command-line JSON processor"
+  
+  - name: curl
+    version: latest
+    description: "Command line tool for transferring data"
+  
+  - name: wget
+    version: latest
+    description: "Network downloader"
+
+# Shell configuration (must run before custom software)
+shell_setup:
+  - name: set-zsh-default
+    description: "Set zsh as default shell for current and new users"
+    enabled: true
+    script: shell-setup/set-zsh-default.sh
+
+# Custom software installations (not available via apt)
+custom_software:
+  - name: oh-my-zsh
+    description: "Zsh framework"
+    script: custom-software/oh-my-zsh/install.sh
+    depends_on: [zsh]
+
+# Configuration tasks
+configurations: 
+  - name: install-oh-my-zsh
+    description: "Install Oh My Zsh for current user and create setup for new users"
+    enabled: true
+    script: configurations/setup-for-users.sh
+  
+  - name: configure-git
+    description: "Configure git with basic settings"
+    enabled: true
+    script: configurations/configure-git.sh
+  
+  - name: configure-ssh-keys
+    description: "Configure SSH keys with symlinks from Windows profile"
+    enabled: true
+    script: configurations/configure-ssh-keys.sh
+
+# Git SSH Keys Configuration
+git_ssh_keys:
+  enabled: true
+  keys:
+    - name: "github"
+      private_key: "id_ed25519"
+      public_key: "id_ed25519.pub"
+      hosts:
+        - name: "github"
+          hostname: "github.com"
+          user: "git"
+          identities_only: true
+
+    - name: "azdo"
+      private_key: "azdo_rsa"
+      public_key: "azdo_rsa.pub"
+      hosts:
+        - name: "azdo"
+          hostname: "ssh.dev.azure.com"
+          user: "git"
+          identities_only: true
+
+# Installation order (optional - defines dependency order)
+installation_order:
+  - prerequisites
+  - apt_packages
+  - shell_setup
+  - custom_software
+  - configurations
+
+# Settings
+settings:
+  # Continue installation even if individual packages fail
+  continue_on_error: true
+  
+  # Update package lists before installation
+  update_packages: true
+  
+  # Clean up after installation
+  cleanup_after_install: true
+  
+  # Log level (DEBUG, INFO, WARN, ERROR)
+  log_level: INFO
+  
+  # Backup existing configurations before overwriting
+  backup_configs: true
+  
+  # Maximum retries for failed installations
+  max_retries: 2

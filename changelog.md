@@ -2,6 +2,173 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Completed] - 2025-09-02
+
+### Executive Summary
+
+#### Configuration Profile System Implementation - COMPLETE
+
+Implemented a comprehensive configuration profile system that allows users to easily switch between different installation configurations without modifying the main configuration files. This system introduces a new approach where `install.yaml` becomes a dynamically generated temporary file based on selected configuration profiles.
+
+**Key Improvements:**
+
+- ✅ **Configuration Profiles**: Added support for multiple pre-defined configuration profiles in `src/config-profiles/`
+- ✅ **Dynamic Profile Resolution**: Intelligent resolution of profile names, relative paths, absolute paths, and remote URLs
+- ✅ **Backward Compatibility**: All existing scripts and workflows continue to work without changes
+- ✅ **Default Behavior**: Uses `full-install.yaml` as the default profile when no configuration is specified
+- ✅ **Profile Auto-Discovery**: Simple profile names (e.g., "minimal-install.yaml") are automatically resolved from the profiles directory
+- ✅ **Remote Configuration Support**: Enhanced support for remote configuration URLs with improved error handling
+- ✅ **PowerShell Integration**: Updated PowerShell entry points with comprehensive profile support and examples
+
+**Built-in Profiles:**
+
+- `full-install.yaml`: Complete development environment with all features (default)
+- `minimal-install.yaml`: Basic development tools and utilities
+
+**Profile Resolution Logic:**
+
+1. Remote URLs (starts with `https://`)
+2. Absolute paths (starts with `/`)
+3. Profile names (auto-resolved from `src/config-profiles/`)
+4. Relative paths (resolved from project root)
+
+### Technical Summary
+
+**Core Changes:**
+
+- **New Functions**: Added `resolve_config_profile()` and `generate_install_yaml()` functions to `src/install.sh`
+- **Profile System**: Implemented intelligent configuration profile resolution and dynamic YAML generation
+- **File Structure**: Created `src/config-profiles/` directory with built-in profiles
+- **Git Configuration**: Added `src/install.yaml` to `.gitignore` as it's now a generated temporary file
+- **Parameter Enhancement**: Updated PowerShell scripts with enhanced `-Config` parameter validation and documentation
+
+**Updated Scripts:**
+
+- `src/install.sh`: Core profile resolution and YAML generation logic
+- `install-wsl.ps1`: Enhanced configuration parameter with examples and validation
+- `install-wsl-remote.ps1`: Updated documentation and examples
+- `src/tests/*.sh`: Updated test scripts to use new profile paths
+
+**Backward Compatibility:**
+
+- All existing workflows continue to work unchanged
+- Remote configuration URLs are fully supported
+- Existing scripts referencing `install.yaml` work transparently
+
+**Documentation Updates:**
+
+- Enhanced `docs/configuration-reference.md` with comprehensive profile system documentation
+- Updated `readme.md` with new configuration examples and profile usage
+- Added implementation plan documentation in `.github/docs/`
+
+## [Completed] - 2025-08-31
+
+### Executive Summary
+
+#### Git SSH Keys Support with Enhanced Security and Skeleton System - COMPLETE
+
+Successfully implemented comprehensive Git SSH keys support with advanced security controls and Linux user creation skeleton integration. This feature provides automatic SSH key configuration for WSL environments with intelligent validation that ensures security, proper user context matching, and seamless integration for new user creation.
+
+**Key Achievements:**
+
+- ✅ **Declarative Configuration**: SSH keys configured through `git_ssh_keys` section in install.yaml
+- ✅ **Windows-WSL Integration**: Automatic file copying from Windows `%USERPROFILE%\.ssh\` to WSL `~/.ssh/`
+- ✅ **Security Compliant**: Proper file permissions (600 for private, 644 for public keys)
+- ✅ **SSH Agent Integration**: Automatic SSH agent configuration and key loading on startup
+- ✅ **Host Configuration**: Dynamic generation of `~/.ssh/config` with per-host settings
+- ✅ **Multi-Key Support**: Support for multiple SSH key pairs for different Git services
+- ✅ **Enhanced Security Controls**: Root user detection, user context validation, and skeleton configuration
+- ✅ **Linux Skeleton Integration**: Automatic SSH key setup for new users via `/etc/skel/` system
+- ✅ **Comprehensive Testing**: Test suite covering validation, parsing, permissions, and security
+- ✅ **Documentation Complete**: Full configuration reference and usage examples
+
+**New Security Features:**
+
+- **Root User Protection**: Automatically skips SSH configuration when running as root user
+- **User Context Validation**: Only configures SSH when WSL user matches Windows user profile path (`/mnt/c/Users/<user>/`)
+- **Skeleton Configuration**: Only attempts SSH setup when SSH keys actually exist in Windows profile
+- **New User Integration**: Automatic SSH key configuration during Linux user creation via skeleton system
+
+**Impact:**
+
+- **Developer Productivity**: Eliminates manual SSH key configuration for WSL environments
+- **Security**: Enhanced security controls prevent misconfiguration and ensure proper user context
+- **Multi-Service Support**: Enables seamless access to GitHub, GitLab, and other Git services
+- **Automation Ready**: Fully integrated with existing installation framework and user creation process
+- **Scalability**: New users automatically receive SSH configuration if keys exist in Windows profile
+
+### Technical Implementation Summary
+
+**Implementation Architecture:**
+
+- **Configuration Script**: `src/configurations/configure-ssh-keys.sh` - Main SSH configuration logic
+- **Integration Point**: Added to configurations section in installation workflow
+- **Test Coverage**: `src/tests/test-ssh-keys.sh` - Comprehensive test suite
+- **Configuration Schema**: Extended install.yaml with `git_ssh_keys` section
+
+**Key Features Implemented:**
+
+- **Symlink Management**: Creates secure symlinks from Windows SSH directory to WSL
+- **Permission Management**: Automatically sets 600/644 permissions for private/public keys
+- **SSH Config Generation**: Dynamic creation of `~/.ssh/config` with host-specific settings
+- **SSH Agent Configuration**: Auto-start SSH agent with key loading on shell startup
+- **Input Validation**: Security validation for configuration parameters
+- **Error Handling**: Graceful handling of missing keys and configuration errors
+
+**Security Enhancements:**
+
+- **Path Validation**: Validates Windows SSH directory existence before symlink creation
+- **Input Sanitization**: Prevents injection attacks through input validation
+- **File Permissions**: Enforces secure SSH key file permissions automatically
+- **Backup Strategy**: Backs up existing SSH configurations before modification
+
+### Added - Git SSH Keys Support
+
+#### New Configuration Section
+
+- **NEW**: `git_ssh_keys` section in install.yaml for SSH key configuration
+  - Supports multiple SSH key pairs with individual host configurations
+  - Declarative configuration with enable/disable functionality
+  - Host-specific SSH settings (hostname, user, port, authentication preferences)
+
+#### New Scripts and Utilities
+
+- **NEW**: `src/configurations/configure-ssh-keys.sh` - SSH key configuration script
+  - Windows user profile path detection and validation
+  - SSH directory structure setup with proper permissions
+  - File copying from Windows to WSL SSH directories (changed from symlinks)
+  - SSH config file generation with host-specific settings
+  - SSH agent configuration and automatic key loading
+  - **Enhanced Security Controls**: Root user detection, user context validation
+  - **Skeleton System Integration**: Automatic installation of user creation skeleton
+- **NEW**: `src/configurations/ssh-keys-skeleton.sh` - Linux user creation skeleton script
+  - Automatic SSH key configuration for new users via `/etc/skel/` system
+  - User context validation ensuring WSL user matches Windows profile
+  - Skeleton configuration that only proceeds when SSH keys exist
+  - Integration with existing skeleton infrastructure
+- **NEW**: `src/tests/test-ssh-keys.sh` - Comprehensive test suite for SSH functionality
+  - Configuration validation and parsing tests
+  - Directory setup and permission tests
+  - SSH config generation and security validation tests
+  - **Enhanced Testing**: Root user detection and user context validation tests
+
+#### Configuration Integration
+
+- **UPDATED**: `src/install.yaml` - Added example SSH keys configuration
+  - GitHub SSH key configuration example with Ed25519 key
+  - Commented GitLab example for multi-service setup
+  - Host configuration with security best practices
+- **UPDATED**: `examples/minimal-dev.yaml` - Added SSH keys example (commented)
+- **UPDATED**: `examples/data-science.yaml` - Added SSH keys examples for GitHub and GitLab
+
+#### Documentation Updates
+
+- **UPDATED**: `docs/configuration-reference.md` - Added comprehensive SSH keys section
+  - Complete configuration schema documentation
+  - Security considerations and prerequisites
+  - Multi-key and multi-host configuration examples
+  - Feature overview and benefits explanation
+
 ## [Completed] - 2025-08-30
 
 ### Executive Summary
@@ -11,6 +178,7 @@ All notable changes to this project will be documented in this file.
 Successfully completed comprehensive reorganization of installation script directories to align with YAML configuration sections. This major structural improvement enhances code organization, maintainability, and developer experience by creating logical groupings that directly correspond to functional areas in the configuration system.
 
 **Key Achievements:**
+
 - ✅ **100% Script Organization Coverage**: All installation scripts reorganized into logical directories matching YAML sections
 - ✅ **Snake_case to Kebab-case Mapping**: Proper naming convention alignment (shell_setup → shell-setup/, custom_software → custom-software/, configurations → configurations/)
 - ✅ **Zero Breaking Changes**: All functionality preserved through comprehensive path updates and testing
@@ -19,6 +187,7 @@ Successfully completed comprehensive reorganization of installation script direc
 - ✅ **Production Ready**: All sections tested and validated with successful installation workflows
 
 **Impact:**
+
 - **Code Organization**: Clear logical separation of shell setup, custom software, and configuration scripts
 - **Developer Experience**: Intuitive directory structure matching YAML configuration sections
 - **Maintainability**: Easier navigation and modification of scripts by functional area
@@ -28,17 +197,20 @@ Successfully completed comprehensive reorganization of installation script direc
 ### Technical Summary
 
 **Directory Structure Transformation:**
+
 - **Before**: Flat `src/software-scripts/` structure with 28+ mixed-purpose scripts
 - **After**: Organized structure with `src/shell-setup/`, `src/custom-software/`, `src/configurations/` directories
 - **Mapping Logic**: YAML snake_case sections → kebab-case directory names (lowercase)
 
 **Critical Issues Resolved:**
+
 - **SCRIPT_DIR Variable Collision**: Fixed utility scripts overwriting global SCRIPT_DIR variable by implementing unique variable names per script
 - **Path Resolution Failures**: Resolved script-not-found errors through comprehensive path updates and testing
 - **Framework Integration**: Ensured all utility scripts work correctly with new directory structure
 - **Execution Context**: Fixed framework function availability in temp directory execution environments
 
 **Configuration Updates:**
+
 - **install.yaml**: Updated all script paths to reflect new directory structure while maintaining YAML section names
 - **Utility Scripts**: Modified path resolution logic to work with reorganized structure
 - **Framework Integration**: Enhanced framework scripts to prevent variable name conflicts
@@ -46,6 +218,7 @@ Successfully completed comprehensive reorganization of installation script direc
 ### Added - Directory Structure Reorganization
 
 #### New Directory Structure
+
 - **NEW**: `src/shell-setup/` - Shell configuration scripts directory
   - Contains: `set-zsh-default.sh` (moved from shell-config/)
   - Purpose: Scripts that configure shell environments and settings
@@ -59,6 +232,7 @@ Successfully completed comprehensive reorganization of installation script direc
   - Purpose: Scripts that configure installed software and system settings
 
 #### Enhanced Path Resolution
+
 - **ENHANCED**: `src/install.sh` - Updated script path resolution logic to work with new directory structure
 - **ENHANCED**: `src/utils/copy-to-temp.sh` - Updated to include new directories in copy operations
 - **ENHANCED**: YAML configuration parsing to handle new directory-based script paths
@@ -70,9 +244,11 @@ Successfully completed comprehensive reorganization of installation script direc
 **COMPLETED**: All installation scripts successfully reorganized by functional purpose:
 
 **Shell Setup Scripts (1 script):**
+
 - ✅ `shell-setup/set-zsh-default.sh` - Moved from `shell-config/set-zsh-default.sh`
 
 **Custom Software Installation Scripts (26+ scripts):**
+
 - ✅ All moved to `custom-software/` directory maintaining subdirectory structure:
   - `custom-software/azure-cli/install.sh`
   - `custom-software/docker/install.sh` 
@@ -81,6 +257,7 @@ Successfully completed comprehensive reorganization of installation script direc
   - [22+ additional software packages]
 
 **Configuration Scripts (4 scripts):**
+
 - ✅ All moved to `configurations/` directory:
   - `configurations/configure-git.sh`
   - `configurations/configure-neovim.sh`
@@ -139,6 +316,7 @@ Successfully completed comprehensive reorganization of installation script direc
 ### Status: COMPLETE ✅
 
 **Implementation Status**: 100% Complete
+
 - **All 28+ scripts reorganized** into logical functional directories
 - **All YAML paths updated** to reflect new directory structure  
 - **All critical path resolution bugs fixed** ensuring robust execution
@@ -176,6 +354,7 @@ None - All changes maintain backward compatibility through comprehensive path up
 Successfully completed comprehensive refactoring of all 26 installation scripts implementing DRY (Don't Repeat Yourself) principles. This major refactoring eliminates ~70% of code duplication while enhancing security, maintainability, and developer experience. All scripts now use a unified installation framework with comprehensive fallback mechanisms ensuring zero breaking changes.
 
 **Key Achievements:**
+
 - ✅ **100% Script Coverage**: All 26 installation scripts refactored (azure-cli, azure-devops-cli, bat, cuelang, docker, docker-compose, dotnet-sdk, fastfetch, fzf, git, golang, helm, homebrew, k9s, kubectl, nano, neovim, nix, nix-packages, nodejs, oh-my-zsh, opentofu, pacman, powershell, shell-config, terraform, yq, ytt, zoxide)
 - ✅ **Zero Breaking Changes**: Backward compatibility maintained through intelligent fallback mechanisms
 - ✅ **Enhanced Security**: Comprehensive input validation, sanitization, and secure execution patterns
@@ -184,6 +363,7 @@ Successfully completed comprehensive refactoring of all 26 installation scripts 
 - ✅ **Production Ready**: All scripts tested and validated in both framework and standalone modes
 
 **Impact:**
+
 - **Code Quality**: ~70% reduction in duplicated code across 26 scripts
 - **Maintainability**: Unified framework simplifies future updates and debugging
 - **Security**: Comprehensive validation prevents injection attacks and ensures safe execution
@@ -193,6 +373,7 @@ Successfully completed comprehensive refactoring of all 26 installation scripts 
 ### Technical Summary
 
 **Architecture Implementation:**
+
 - **Core Framework**: `src/utils/installation-framework.sh` - Unified installation orchestration
 - **Security Layer**: `src/utils/security-helpers.sh` - Comprehensive input validation and sanitization  
 - **Package Management**: Enhanced `src/utils/package-manager.sh` with security integration
@@ -200,12 +381,14 @@ Successfully completed comprehensive refactoring of all 26 installation scripts 
 - **Testing Suite**: `src/tests/test-framework.sh` for comprehensive validation
 
 **Critical Fixes Completed:**
+
 - **Framework Integration Bug**: Fixed missing `install_apt_package` function by integrating package-manager.sh sourcing
 - **WSL Docker Handling**: Implemented intelligent Docker Desktop WSL integration detection and messaging
 - **Azure CLI Dependencies**: Resolved azure-devops-cli script dependency on azure-cli framework functions
 - **Execution Context**: Fixed framework function availability in /tmp execution environments
 
 **Security Enhancements:**
+
 - Input validation using regex patterns preventing injection attacks
 - Path sanitization preventing directory traversal vulnerabilities  
 - Secure temporary file creation with restricted permissions
@@ -215,6 +398,7 @@ Successfully completed comprehensive refactoring of all 26 installation scripts 
 ### Added - DRY Principles Refactoring Implementation
 
 #### Installation Framework
+
 - **NEW**: `src/utils/installation-framework.sh` - Common installation framework providing standardized functions:
   - `initialize_script()` - Handle script directory, sourcing, standalone mode
   - `check_already_installed()` - Standardized installation check with version detection
@@ -227,6 +411,7 @@ Successfully completed comprehensive refactoring of all 26 installation scripts 
   - `setup_fallback_logging()`, `handle_standalone_execution()` - Standalone script support
 
 #### Security Enhancements
+
 - **NEW**: `src/utils/security-helpers.sh` - Security utilities for safe parameter handling:
   - `validate_and_sanitize_url()` - URL validation with security checks against dangerous patterns
   - `validate_file_path()` - File path validation preventing directory traversal
@@ -240,6 +425,7 @@ Successfully completed comprehensive refactoring of all 26 installation scripts 
   - `check_security_prerequisites()` - Security tool availability checks
 
 #### Enhanced Package Management
+
 - **ENHANCED**: `src/utils/package-manager.sh` - Added new validation and security functions:
   - `validate_installation_prerequisites()` - Common prerequisite validation
   - `sanitize_version_string()` - Version string sanitization
@@ -248,6 +434,7 @@ Successfully completed comprehensive refactoring of all 26 installation scripts 
   - `run_custom_installation_script_safe()` - Secure custom script execution with path validation
 
 #### Script Templates and Generators
+
 - **NEW**: `templates/install-script-template.sh` - Master template for installation scripts
   - Standardized script structure using the new framework
   - Placeholder markers for software-specific customizations
@@ -262,6 +449,7 @@ Successfully completed comprehensive refactoring of all 26 installation scripts 
   - Command-line interface for script generation and refactoring
 
 #### Testing Infrastructure
+
 - **NEW**: `src/tests/test-framework.sh` - Comprehensive test suite for the installation framework
   - Tests for all framework functions
   - Security validation tests
@@ -270,6 +458,7 @@ Successfully completed comprehensive refactoring of all 26 installation scripts 
   - Temporary file and directory creation tests
 
 #### Implementation Documentation
+
 - **NEW**: `.github/docs/install-script-refactoring-dry-principles-plan-20250829.md` - Detailed implementation plan
   - Complete analysis of code duplication patterns across 52 installation scripts
   - Task-based implementation roadmap with time estimates
@@ -283,6 +472,7 @@ Successfully completed comprehensive refactoring of all 26 installation scripts 
 **COMPLETED**: ALL installation scripts have been successfully migrated to use the new framework:
 
 **Infrastructure & Development Tools:**
+
 - ✅ `azure-cli/install.sh` - Azure CLI with framework integration + critical fixes  
 - ✅ `azure-devops-cli/install.sh` - Azure DevOps CLI with dependency resolution
 - ✅ `docker/install.sh` - Docker with WSL Desktop integration handling
@@ -294,24 +484,28 @@ Successfully completed comprehensive refactoring of all 26 installation scripts 
 - ✅ `opentofu/install.sh` - Open-source Terraform alternative
 
 **Programming Languages & Runtimes:**
+
 - ✅ `nodejs/install.sh` - Node.js LTS with npm environment setup
 - ✅ `golang/install.sh` - Go with GOPATH configuration and workspace creation
 - ✅ `dotnet-sdk/install.sh` - .NET 8.0 SDK with Microsoft repository integration
 - ✅ `powershell/install.sh` - PowerShell Core cross-platform shell
 
 **Package Managers & System Tools:**
+
 - ✅ `nix/install.sh` - Nix package manager with functional programming approach
 - ✅ `nix-packages/install.sh` - Nix package installation orchestration
 - ✅ `homebrew/install.sh` - Homebrew Linux package manager
 - ✅ `pacman/install.sh` - Arch Linux package manager integration
 
 **Shell & Terminal Enhancement:**
+
 - ✅ `oh-my-zsh/install.sh` - Zsh framework with plugin management
 - ✅ `shell-config/install.sh` - Shell environment configuration
 - ✅ `zoxide/install.sh` - Smart directory navigation with learning
 - ✅ `fzf/install.sh` - Fuzzy finder for command-line interface
 
 **Text Editors & CLI Utilities:**
+
 - ✅ `neovim/install.sh` - Modern Vim-based editor with Lua configuration
 - ✅ `nano/install.sh` - Simple text editor with syntax highlighting
 - ✅ `git/install.sh` - Version control system with latest features
@@ -320,6 +514,7 @@ Successfully completed comprehensive refactoring of all 26 installation scripts 
 - ✅ `ytt/install.sh` - YAML templating tool with GitHub API integration
 
 **System Information & Data Processing:**
+
 - ✅ `fastfetch/install.sh` - System information display with customization
 - ✅ `cuelang/install.sh` - Configuration language with type validation
 
@@ -381,6 +576,7 @@ Each refactored script now includes:
 ### Status: COMPLETE ✅
 
 **Implementation Status**: 100% Complete
+
 - **All 26 scripts refactored** using DRY principles
 - **All critical fixes applied** ensuring production stability  
 - **WSL Docker integration** handling implemented

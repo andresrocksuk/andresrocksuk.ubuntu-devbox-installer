@@ -7,7 +7,7 @@ set -e
 
 # Script directory and paths
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-CONFIG_FILE="$SCRIPT_DIR/../install.yaml"
+CONFIG_FILE="$SCRIPT_DIR/../config-profiles/full-install.yaml"
 UTILS_DIR="$SCRIPT_DIR/../utils"
 
 # Generate unique run ID for this execution if not already set

@@ -24,7 +24,7 @@ PARAMETERS:
     -ResetWSL    Reset WSL distribution before installation (WARNING: This will delete existing WSL data)
     -Force       Force installation without confirmation prompts (WARNING: This will skip all confirmations)
     -Sections    Specify installation sections from the install.yaml configuration (e.g., @("apt_packages") or @("custom_software"))
-    -Config      Path to configuration file or URL to remote configuration file (e.g., "https://raw.githubusercontent.com/user/repo/main/config.yaml")
+    -Config      Configuration profile name, path, or URL. Examples: "minimal-install.yaml", "src/config-profiles/full-install.yaml", or remote URL
     -BranchName  Specify the branch name to use from the GitHub repository (default: "main")
     -Help        Show this help message
 
@@ -35,11 +35,11 @@ EXAMPLES:
     # Installation with WSL reset (Advanced)
     & ([scriptblock]::Create((irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/$BranchName/install-wsl-remote.ps1"))) -ResetWSL
 
-    # Installation with minimal development configuration
-    & ([scriptblock]::Create((irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/$BranchName/install-wsl-remote.ps1"))) -Sections @("apt_packages")
+    # Installation with minimal profile configuration
+    & ([scriptblock]::Create((irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/$BranchName/install-wsl-remote.ps1"))) -Config "minimal-install.yaml"
 
     # Installation with remote configuration file
-    & ([scriptblock]::Create((irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/$BranchName/install-wsl-remote.ps1"))) -Config "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/refs/heads/main/src/install.yaml"
+    & ([scriptblock]::Create((irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/$BranchName/install-wsl-remote.ps1"))) -Config "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/refs/heads/main/src/config-profiles/full-install.yaml"
 
 "@ -ForegroundColor Green
     return

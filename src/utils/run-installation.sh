@@ -19,17 +19,18 @@ log_success() {
 }
 
 # Check if required parameters are provided
-if [ $# -lt 3 ] || [ $# -gt 4 ]; then
-    log_error "Usage: $0 <temp_script_dir> <run_id> <log_path> [config_args]"
-    log_error "Example: $0 /tmp/wsl-install-20250824_123456 20250824_123456 /mnt/c/Users/user/wsl/logs"
-    log_error "Example with config: $0 /tmp/wsl-install-20250824_123456 20250824_123456 /mnt/c/Users/user/wsl/logs '--config prerequisites,apt_packages'"
+if [ $# -lt 4 ] || [ $# -gt 5 ]; then
+    log_error "Usage: $0 <temp_script_dir> <run_id> <log_path> <source_path> [config_args]"
+    log_error "Example: $0 /tmp/wsl-install-20250824_123456 20250824_123456 /mnt/c/Users/user/wsl/logs /mnt/c/Users/user/project/src"
+    log_error "Example with config: $0 /tmp/wsl-install-20250824_123456 20250824_123456 /mnt/c/Users/user/wsl/logs /mnt/c/Users/user/project/src '--config prerequisites,apt_packages'"
     exit 1
 fi
 
 TEMP_SCRIPT_DIR="$1"
 RUN_ID="$2"
 LOG_PATH="$3"
-CONFIG_ARGS="$4"
+SOURCE_PATH="$4"
+CONFIG_ARGS="$5"
 
 # Define log file paths
 LOG_FILE="/tmp/wsl-install-log-$RUN_ID.log"
@@ -39,6 +40,7 @@ log_info "Starting WSL installation execution..."
 log_info "Temp directory: $TEMP_SCRIPT_DIR"
 log_info "Run ID: $RUN_ID"
 log_info "Log path: $LOG_PATH"
+log_info "Source path: $SOURCE_PATH"
 log_info "Config args: $CONFIG_ARGS"
 
 # Validate temp directory exists and contains install.sh
@@ -55,10 +57,12 @@ fi
 # Set environment variables
 export WSL_INSTALL_RUN_ID="$RUN_ID"
 export WSL_INSTALL_TEMP_MODE='1'
+export WSL_INSTALL_SOURCE_DIR="$SOURCE_PATH"
 
 log_info "Environment variables set:"
 log_info "  WSL_INSTALL_RUN_ID=$WSL_INSTALL_RUN_ID"
 log_info "  WSL_INSTALL_TEMP_MODE=$WSL_INSTALL_TEMP_MODE"
+log_info "  WSL_INSTALL_SOURCE_DIR=$WSL_INSTALL_SOURCE_DIR"
 
 # Ensure the Windows logs directory exists from WSL side
 log_info "Ensuring log directory exists: $LOG_PATH"
@@ -165,8 +169,8 @@ validate_config_args() {
                 fi
                 ;;
             --config|-c)
-                # Config can be either HTTPS URL or YAML file path
-                local config_pattern="^(https://[a-zA-Z0-9._/-]+|[a-zA-Z0-9._/-]+\.ya?ml)$"
+                # Config can be either HTTPS URL, specific config-profiles path, or YAML file path
+                local config_pattern="^(https://[a-zA-Z0-9._/-]+|src/config-profiles/[a-zA-Z0-9._/-]+\.ya?ml|[a-zA-Z0-9._/-]+\.ya?ml)$"
                 if process_param_with_value "--config" "$i" "$config_pattern" "Invalid config parameter" RAW_ARGS validated_args i; then
                     continue
                 else

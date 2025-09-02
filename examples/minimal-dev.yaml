@@ -88,3 +88,21 @@ configurations:
       echo "set expandtab" >> ~/.config/nvim/init.vim
       echo "set tabstop=2" >> ~/.config/nvim/init.vim
       echo "set shiftwidth=2" >> ~/.config/nvim/init.vim
+
+# Git SSH Keys Configuration (uncomment and configure as needed)
+# git_ssh_keys:
+#   enabled: false  # Set to true to enable SSH keys
+#   keys:
+#     - name: "github"
+#       private_key: "id_ed25519"
+#       public_key: "id_ed25519.pub"
+#       hosts:
+#         - name: "github"
+#           hostname: "github.com"
+#           user: "git"
+#           port: 22
+#           preferred_authentications: "publickey"
+#           identities_only: true
+#           forward_agent: false
+#           server_alive_interval: 60
+#           server_alive_count_max: 5

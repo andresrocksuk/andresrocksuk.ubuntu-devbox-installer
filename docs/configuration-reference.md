@@ -1,33 +1,63 @@
 # Configuration Reference
 
-This document provides a comprehensive reference for configuring the WSL Ubuntu DevBox Installer using YAML configuration files.
+This document provides a comprehensive reference for configuring the WSL Ubuntu DevBox Installer using configuration profiles and YAML configuration files.
 
-## PowerShell Parameter Reference
+## Configuration Profile System
 
-The installer supports multiple configuration methods through PowerShell parameters:
+The installer uses a configuration profile system that allows you to switch between different installation configurations easily.
 
 ### Configuration Sources
 
-- **File-based**: Use `-Config path/to/config.yaml` for local YAML files
-- **Remote configurations**: Use `-Config https://example.com/config.yaml` for remote configurations
-- **Built-in configurations**: Use `-Config minimal-dev` or `-Config data-science` for included examples
+- **Profile Names**: Use just the filename (e.g., `"minimal-install.yaml"`) to auto-resolve from `src/config-profiles/`
+- **Relative Paths**: Use paths like `"src/config-profiles/minimal-install.yaml"` or `"examples/data-science.yaml"`
+- **Absolute Paths**: Full system paths to configuration files
+- **Remote URLs**: HTTPS URLs to remote configuration files
 
-### Key Parameters
+### Built-in Profiles
 
-- `-Config <string>`: Configuration source (file path, URL, or built-in name)
+The installer includes several pre-configured profiles:
+
+- **`full-install.yaml`**: Complete development environment with all features (default)
+- **`minimal-install.yaml`**: Minimal installation with basic development tools
+
+### Profile Resolution
+
+The installer resolves configuration profiles in the following order:
+
+1. **URL**: If the config starts with `https://`, it's treated as a remote URL
+2. **Absolute Path**: If the config starts with `/`, it's treated as an absolute path
+3. **Profile Name**: If the config is just a filename (e.g., `minimal-install.yaml`), it's resolved from `src/config-profiles/`
+4. **Relative Path**: Otherwise, it's resolved relative to the project root
+
+### PowerShell Parameter Reference
+
+#### Configuration Parameters
+
+- `-Config <string>`: Configuration profile name, path, or URL
+  - Profile names: `"minimal-install.yaml"`
+  - Relative paths: `"src/config-profiles/minimal-install.yaml"`
+  - Absolute paths: `"/path/to/config.yaml"`
+  - Remote URLs: `"https://example.com/config.yaml"`
 - `-AutoInstall`: Run without user prompts (for automation)
 - `-ResetWSL`: Reset WSL distribution before installation (destructive operation)
-- `-SkipTempCopy`: Run directly in WSL without copying to temp (slower but uses less disk)
-- `-LogLevel <string>`: Set logging verbosity (DEBUG, INFO, WARN, ERROR)
+- `-RunDirect`: Execute directly without copying to temp directory
+- `-Sections <string[]>`: Specify specific sections to install
 
-### Parameter Validation
+#### Examples
 
-The PowerShell script includes comprehensive parameter validation:
+```powershell
+# Use minimal profile
+.\install-wsl.ps1 -AutoInstall -Config "minimal-install.yaml"
 
-- Configuration paths are validated for existence
-- Remote URLs are validated for HTTPS protocol
-- Built-in configuration names are validated against available options
-- Parameters are checked before WSL execution begins
+# Use full profile with explicit path
+.\install-wsl.ps1 -AutoInstall -Config "src/config-profiles/full-install.yaml"
+
+# Use remote configuration
+.\install-wsl.ps1 -AutoInstall -Config "https://example.com/config.yaml"
+
+# Default behavior (uses full-install.yaml)
+.\install-wsl.ps1 -AutoInstall
+```
 
 ## YAML Schema Overview
 
@@ -392,6 +422,62 @@ configurations:
 - `description`: Human-readable description
 - `enabled`: Whether to run this configuration
 - `script`: Inline bash script (use `|` for multi-line)
+
+## Git SSH Keys Configuration
+
+The SSH keys feature allows you to automatically set up SSH keys for Git repositories by creating symlinks from your Windows user profile to the WSL user profile.
+
+```yaml
+git_ssh_keys:
+  enabled: true                    # Enable/disable SSH key configuration
+  keys:
+    - name: "github"              # Unique identifier for this key pair
+      private_key: "id_ed25519"   # Private key filename in Windows ~/.ssh/
+      public_key: "id_ed25519.pub" # Public key filename in Windows ~/.ssh/
+      hosts:
+        - name: "github"          # SSH host alias
+          hostname: "github.com"  # Actual hostname
+          user: "git"             # SSH user
+          port: 22                # SSH port
+          preferred_authentications: "publickey"
+          identities_only: true   # Only use specified identity
+          forward_agent: false    # Don't forward SSH agent
+          server_alive_interval: 60    # Keep connection alive
+          server_alive_count_max: 5    # Max keep-alive attempts
+    
+    - name: "gitlab"              # Example: second key for GitLab
+      private_key: "id_rsa_gitlab"
+      public_key: "id_rsa_gitlab.pub"
+      hosts:
+        - name: "gitlab"
+          hostname: "gitlab.com"
+          user: "git"
+          port: 22
+          preferred_authentications: "publickey"
+          identities_only: true
+          forward_agent: false
+          server_alive_interval: 60
+          server_alive_count_max: 5
+```
+
+**SSH Keys Features:**
+
+- **Automatic Symlinks**: Creates symlinks from Windows `%USERPROFILE%\.ssh\` to WSL `~/.ssh/`
+- **Proper Permissions**: Sets 600 for private keys, 644 for public keys
+- **SSH Agent Integration**: Automatically configures SSH agent to load keys on startup
+- **Host Configuration**: Generates `~/.ssh/config` with per-host settings
+- **Multi-Key Support**: Supports multiple SSH key pairs for different services
+
+**Prerequisites:**
+- SSH keys must exist in Windows user profile `.ssh` directory
+- Keys should be generated using standard tools (ssh-keygen, PuTTYgen, etc.)
+- Windows user profile must be accessible from WSL
+
+**Security Considerations:**
+- Only creates symlinks, doesn't copy sensitive key material
+- Validates key file existence before creating symlinks
+- Sets secure file permissions automatically
+- Input validation prevents injection attacks
 
 ## Example Configurations
 

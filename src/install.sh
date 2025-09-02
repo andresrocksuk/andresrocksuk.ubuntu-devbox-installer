@@ -11,6 +11,23 @@ if [ "$SCRIPT_DIR" = "$0" ]; then
     SCRIPT_DIR="."
 fi
 SCRIPT_DIR="$(cd "$SCRIPT_DIR" && pwd)"
+
+# Store the original source directory for resolving relative paths
+# This is important for temp mode where SCRIPT_DIR points to temp directory
+if [ -n "$WSL_INSTALL_TEMP_MODE" ]; then
+    # In temp mode, we need to know the original source directory
+    # The original source directory should be passed as an environment variable
+    if [ -n "$WSL_INSTALL_SOURCE_DIR" ]; then
+        ORIGINAL_SOURCE_DIR="$WSL_INSTALL_SOURCE_DIR"
+    else
+        # Fallback: assume we're one level deep from the original source
+        ORIGINAL_SOURCE_DIR="$(dirname "$SCRIPT_DIR")/src"
+    fi
+else
+    # In direct mode, SCRIPT_DIR is the source directory
+    ORIGINAL_SOURCE_DIR="$SCRIPT_DIR"
+fi
+
 CONFIG_FILE="$SCRIPT_DIR/install.yaml"
 UTILS_DIR="$SCRIPT_DIR/utils"
 
@@ -38,6 +55,7 @@ FORCE_INSTALL=false
 DRY_RUN=false
 RUN_APT_UPGRADE=false
 SELECTED_SECTIONS=()
+CONFIG_ARG=""
 
 # Function to display help
 show_help() {
@@ -91,7 +109,8 @@ parse_arguments() {
                 shift 2
                 ;;
             -c|--config)
-                CONFIG_FILE="$2"
+                # Store the config argument for later resolution
+                CONFIG_ARG="$2"
                 shift 2
                 ;;
             -s|--sections)
@@ -155,41 +174,118 @@ validate_sections() {
     done
 }
 
-# Function to download remote configuration file if needed
-download_remote_config() {
-    # Check if CONFIG_FILE looks like a URL
-    if [[ "$CONFIG_FILE" =~ ^https?:// ]]; then
-        log_info "Detected remote configuration URL: $CONFIG_FILE"
+# Function to resolve configuration profile
+resolve_config_profile() {
+    local config_arg="$1"
+    
+    # If no config argument provided, use default profile
+    if [ -z "$config_arg" ]; then
+        CONFIG_FILE="$SCRIPT_DIR/config-profiles/full-install.yaml"
+        log_info "Using default configuration profile: $CONFIG_FILE"
+        return 0
+    fi
+    
+    # If it's a URL, use as-is
+    if [[ "$config_arg" =~ ^https?:// ]]; then
+        CONFIG_FILE="$config_arg"
+        log_info "Using remote configuration: $CONFIG_FILE"
+        return 0
+    fi
+    
+    # If it's an absolute path, use as-is
+    if [[ "$config_arg" =~ ^/ ]]; then
+        CONFIG_FILE="$config_arg"
+        log_info "Using absolute path configuration: $CONFIG_FILE"
+        return 0
+    fi
+    
+    # Check if it's a profile name without path
+    if [[ "$config_arg" =~ ^[a-zA-Z0-9._-]+\.ya?ml$ ]]; then
+        # Try to find it in config-profiles directory
+        local profile_path="$SCRIPT_DIR/config-profiles/$config_arg"
+        if [ -f "$profile_path" ]; then
+            CONFIG_FILE="$profile_path"
+            log_info "Using profile from config-profiles: $CONFIG_FILE"
+            return 0
+        fi
+    fi
+    
+    # Handle relative paths - resolve relative to the original source directory's parent
+    CONFIG_FILE="$(dirname "$ORIGINAL_SOURCE_DIR")/$config_arg"
+    log_info "Using relative path configuration: $CONFIG_FILE"
+}
+
+# Function to generate install.yaml from resolved profile
+generate_install_yaml() {
+    local source_config="$CONFIG_FILE"
+    local target_config="$SCRIPT_DIR/install.yaml"
+    
+    # If source is a URL, download it first
+    if [[ "$source_config" =~ ^https?:// ]]; then
+        log_info "Downloading remote configuration from: $source_config"
         
         # Create temp file for the remote config
         local temp_config="/tmp/wsl-remote-config-$WSL_INSTALL_RUN_ID.yaml"
         
-        log_info "Downloading remote configuration to: $temp_config"
-        
         # Try to download with curl first, then wget
         if command_exists "curl"; then
-            if curl -s -L "$CONFIG_FILE" -o "$temp_config"; then
+            if curl -s -L "$source_config" -o "$temp_config"; then
                 log_success "Successfully downloaded remote configuration with curl"
-                CONFIG_FILE="$temp_config"
-                return 0
+                source_config="$temp_config"
             else
                 log_error "Failed to download remote configuration with curl"
-                exit 1
+                return 1
             fi
         elif command_exists "wget"; then
-            if wget -q "$CONFIG_FILE" -O "$temp_config"; then
+            if wget -q "$source_config" -O "$temp_config"; then
                 log_success "Successfully downloaded remote configuration with wget"
-                CONFIG_FILE="$temp_config"
-                return 0
+                source_config="$temp_config"
             else
                 log_error "Failed to download remote configuration with wget"
-                exit 1
+                return 1
             fi
         else
-            log_error "Neither curl nor wget is available for downloading remote configuration"
-            exit 1
+            log_error "Neither curl nor wget available to download remote configuration"
+            return 1
         fi
     fi
+    
+    # Validate source configuration exists
+    if [ ! -f "$source_config" ]; then
+        log_error "Configuration file not found: $source_config"
+        return 1
+    fi
+    
+    # Validate YAML syntax
+    if command_exists "yq"; then
+        if ! yq eval '.' "$source_config" >/dev/null 2>&1; then
+            log_error "Invalid YAML syntax in configuration: $source_config"
+            return 1
+        fi
+    fi
+    
+    # Copy the configuration to install.yaml
+    log_info "Generating install.yaml from profile: $source_config"
+    cp "$source_config" "$target_config"
+    
+    if [ $? -eq 0 ]; then
+        log_success "Successfully generated install.yaml"
+        # Update CONFIG_FILE to point to the generated file
+        CONFIG_FILE="$target_config"
+        return 0
+    else
+        log_error "Failed to generate install.yaml from profile"
+        return 1
+    fi
+}
+
+# Function to download remote configuration file if needed
+download_remote_config() {
+    # This function is now deprecated - functionality moved to generate_install_yaml
+    # Keeping for backward compatibility but will redirect to new function
+    log_info "Redirecting to new configuration profile system..."
+    generate_install_yaml
+    return $?
 }
 
 # Function to read and display metadata from config
@@ -758,10 +854,20 @@ show_summary() {
 # Main function
 main() {
     log_info "Starting WSL Installation Script"
-    log_info "Configuration file: $CONFIG_FILE"
     
     # Parse command line arguments
     parse_arguments "$@"
+    
+    # Resolve configuration profile
+    resolve_config_profile "$CONFIG_ARG"
+    
+    # Generate install.yaml from resolved profile
+    if ! generate_install_yaml; then
+        log_error "Failed to generate configuration from profile"
+        exit 1
+    fi
+    
+    log_info "Configuration file: $CONFIG_FILE"
     
     # Validate selected sections
     validate_sections
@@ -771,9 +877,6 @@ main() {
         log_error "Failed to set up YAML processing dependencies"
         exit 1
     fi
-    
-    # Download remote configuration if needed
-    download_remote_config
     
     # Validate configuration
     validate_config

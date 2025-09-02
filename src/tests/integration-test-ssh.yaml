@@ -1,0 +1,42 @@
+metadata:
+  name: "SSH Keys Integration Test"
+  description: "Testing SSH keys with installation framework"
+  version: "1.0.0"
+
+settings:
+  continue_on_error: true
+  log_level: "INFO"
+
+# Minimal packages for testing
+apt_packages: []
+custom_software: []
+python_packages: []
+powershell_modules: []
+nix_packages: []
+
+# Only test SSH keys configuration
+configurations:
+  - name: configure-ssh-keys
+    description: "Configure SSH keys with symlinks from Windows profile"
+    enabled: true
+    script: configurations/configure-ssh-keys.sh
+
+git_ssh_keys:
+  enabled: true
+  keys:
+    - name: "test-github"
+      private_key: "id_ed25519"
+      public_key: "id_ed25519.pub"
+      hosts:
+        - name: "github"
+          hostname: "github.com"
+          user: "git"
+          port: 22
+          preferred_authentications: "publickey"
+          identities_only: true
+          forward_agent: false
+          server_alive_interval: 60
+          server_alive_count_max: 5
+
+installation_order:
+  - configurations

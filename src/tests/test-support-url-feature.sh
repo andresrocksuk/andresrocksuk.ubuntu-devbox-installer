@@ -55,7 +55,7 @@ echo ""
 # Test 4: Test remote configuration URL support
 echo "Test 4: Testing remote configuration URL (dry run)"
 cd "$SRC_DIR"
-bash install.sh --config "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/refs/heads/main/src/install.yaml" --dry-run --sections prerequisites | head -20
+bash install.sh --config "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/refs/heads/main/src/config-profiles/full-install.yaml" --dry-run --sections prerequisites | head -20
 echo ""
 
 # Test 5: Test metadata display
@@ -72,5 +72,5 @@ log_success "Remote configuration URL support"
 log_success "Documentation updates"
 echo ""
 log_info "Ready for integration testing with:"
-echo "  - GitHub URL: https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/refs/heads/main/src/install.yaml"
+echo "  - GitHub URL: https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/refs/heads/main/src/config-profiles/full-install.yaml"
 echo ""

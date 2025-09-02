@@ -86,15 +86,38 @@ The default configuration includes:
 
 ## 🎛️ Configuration Options
 
-### Using Remote Configurations (New!)
+### Configuration Profiles
+
+The installer uses a flexible configuration profile system:
+
+```powershell
+# Use minimal installation profile
+.\install-wsl.ps1 -AutoInstall -Config "minimal-install.yaml"
+
+# Use full installation profile (default)
+.\install-wsl.ps1 -AutoInstall -Config "full-install.yaml"
+
+# Use explicit path to profile
+.\install-wsl.ps1 -AutoInstall -Config "src/config-profiles/minimal-install.yaml"
+
+# Use example configuration
+.\install-wsl.ps1 -AutoInstall -Config "examples/data-science.yaml"
+```
+
+### Remote Configurations
 
 ```powershell
 # Use remote configuration directly from GitHub
-.\install-wsl.ps1 -AutoInstall -Config "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/refs/heads/main/src/install.yaml"
+.\install-wsl.ps1 -AutoInstall -Config "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/refs/heads/main/src/config-profiles/full-install.yaml"
 
 # Use custom remote configuration
 .\install-wsl.ps1 -AutoInstall -Config "https://raw.githubusercontent.com/yourusername/your-repo/main/config.yaml"
 ```
+
+### Built-in Profiles
+
+- **`full-install.yaml`**: Complete development environment (default)
+- **`minimal-install.yaml`**: Basic development tools and utilities
 
 ### Using Example Configurations
 

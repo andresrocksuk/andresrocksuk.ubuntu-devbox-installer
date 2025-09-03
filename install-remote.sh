@@ -219,15 +219,23 @@ check_prerequisites() {
     log_section "🔍 Checking prerequisites..."
     
     local missing_tools=()
+    local install_attempted=false
     
     # Check for curl or wget
     if ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1; then
         missing_tools+=("curl or wget")
     fi
     
-    # Check for unzip
+    # Check for unzip and try to install if missing
     if ! command -v unzip >/dev/null 2>&1; then
-        missing_tools+=("unzip")
+        log_info "unzip not found - attempting automatic installation..."
+        install_attempted=true
+        
+        if attempt_install_unzip; then
+            log_success "unzip installed successfully"
+        else
+            missing_tools+=("unzip")
+        fi
     fi
     
     # Check for tar (alternative to unzip)
@@ -244,7 +252,56 @@ check_prerequisites() {
         exit 1
     fi
     
-    log_success "All prerequisites are available"
+    if [ "$install_attempted" = "true" ]; then
+        log_success "All prerequisites are now available"
+    else
+        log_success "All prerequisites are available"
+    fi
+}
+
+# Function to attempt automatic installation of unzip
+attempt_install_unzip() {
+    local package_manager=""
+    local install_cmd=""
+    
+    # Detect the package manager and OS
+    if command -v apt-get >/dev/null 2>&1; then
+        package_manager="apt"
+        install_cmd="sudo apt-get update && sudo apt-get install -y unzip"
+    elif command -v yum >/dev/null 2>&1; then
+        package_manager="yum"
+        install_cmd="sudo yum install -y unzip"
+    elif command -v dnf >/dev/null 2>&1; then
+        package_manager="dnf"
+        install_cmd="sudo dnf install -y unzip"
+    elif command -v apk >/dev/null 2>&1; then
+        package_manager="apk"
+        install_cmd="sudo apk add unzip"
+    elif command -v pacman >/dev/null 2>&1; then
+        package_manager="pacman"
+        install_cmd="sudo pacman -Sy --noconfirm unzip"
+    else
+        log_warn "No supported package manager found for automatic installation"
+        return 1
+    fi
+    
+    log_info "Detected package manager: $package_manager"
+    log_info "Installing unzip..."
+    
+    # Execute the installation command
+    if eval "$install_cmd" >/dev/null 2>&1; then
+        # Verify installation was successful
+        if command -v unzip >/dev/null 2>&1; then
+            log_info "unzip installation completed successfully"
+            return 0
+        else
+            log_warn "unzip installation command succeeded but unzip is still not available"
+            return 1
+        fi
+    else
+        log_warn "Failed to install unzip automatically (you may need to install it manually)"
+        return 1
+    fi
 }
 
 # Function to download file with fallback

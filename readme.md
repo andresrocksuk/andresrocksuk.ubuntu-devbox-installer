@@ -28,8 +28,14 @@ A declarative WSL development environment installer that automates Ubuntu 24.04 
 
 **One-liner installation** - No need to clone the repository:
 
+#### From Windows PowerShell:
 ```powershell
 irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/main/install-wsl-remote.ps1" | iex
+```
+
+#### From Linux/WSL Bash:
+```bash
+curl -sSL "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/main/install-remote.sh" | bash
 ```
 
 For advanced options, see the [Remote Installation Guide](docs/remote-installation.md).

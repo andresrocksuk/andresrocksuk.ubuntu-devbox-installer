@@ -430,8 +430,6 @@ Successfully completed comprehensive refactoring of all 26 installation scripts 
   - `validate_installation_prerequisites()` - Common prerequisite validation
   - `sanitize_version_string()` - Version string sanitization
   - `validate_package_params()` - Package installation parameter validation
-  - `install_apt_package_safe()` - Enhanced APT package installation with validation
-  - `run_custom_installation_script_safe()` - Secure custom script execution with path validation
 
 #### Script Templates and Generators
 

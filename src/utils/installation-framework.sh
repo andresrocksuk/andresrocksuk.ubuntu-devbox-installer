@@ -47,6 +47,10 @@ initialize_script() {
     export INSTALL_SCRIPT_NAME="$script_name"
     export INSTALL_SOFTWARE_DESCRIPTION="$software_description"
     
+    # Set up non-interactive environment for installations
+    export DEBIAN_FRONTEND=noninteractive
+    export NEEDRESTART_MODE=a
+    
     # Set up script directory paths
     export INSTALL_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[1]}")" && pwd)"
     export INSTALL_UTILS_DIR="$(cd "$INSTALL_SCRIPT_DIR/../../utils" && pwd)"

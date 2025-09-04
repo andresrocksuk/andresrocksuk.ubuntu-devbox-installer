@@ -20,6 +20,27 @@ fi
 source "$PKG_SCRIPT_DIR/logger.sh"
 source "$PKG_SCRIPT_DIR/version-checker.sh"
 
+# Function to setup non-interactive environment for apt operations
+setup_noninteractive_apt() {
+    export DEBIAN_FRONTEND=noninteractive
+    export NEEDRESTART_MODE=a
+    export NEEDRESTART_SUSPEND=1
+    export APT_LISTCHANGES_FRONTEND=none
+    export DEBIAN_PRIORITY=critical
+}
+
+# Function to run apt-get update with proper settings
+safe_apt_update() {
+    setup_noninteractive_apt
+    sudo -E apt-get update -qq < /dev/null
+}
+
+# Function to run apt-get install with proper settings
+safe_apt_install() {
+    setup_noninteractive_apt
+    sudo -E apt-get install -y -qq -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" "$@" < /dev/null
+}
+
 # Function to update package lists
 update_package_lists() {
     log_info "Updating package lists..."
@@ -74,13 +95,13 @@ update_package_lists() {
         done
     fi
 
-    if log_command "sudo apt-get update"; then
+    if log_command "safe_apt_update"; then
         log_success "Package lists updated successfully"
         
         # Run upgrade if requested
         if [ "${RUN_APT_UPGRADE:-false}" = "true" ]; then
             log_info "Running apt-get upgrade as requested..."
-            if log_command "sudo apt-get upgrade -y"; then
+            if log_command "sudo -E apt-get upgrade -y -qq"; then
                 log_success "System packages upgraded successfully"
             else
                 log_error "Failed to upgrade system packages"
@@ -110,13 +131,13 @@ install_apt_package() {
     fi
     
     # Install package
-    local install_cmd="sudo apt-get install -y"
+    local install_cmd
     
     if [ "$version" != "latest" ]; then
         # Try to install specific version
-        install_cmd="$install_cmd $package=$version"
+        install_cmd="safe_apt_install $package=$version"
     else
-        install_cmd="$install_cmd $package"
+        install_cmd="safe_apt_install $package"
     fi
     
     if log_command "$install_cmd"; then
@@ -265,37 +286,32 @@ run_custom_installation_script() {
     # Set environment variables for the script
     export FORCE_INSTALL="$force_install"
     export INSTALLING_SOFTWARE="$software"
+    export DEBIAN_FRONTEND=noninteractive
     
-    # Run installation script with timeout and error capture
-    local script_output
+    # Run installation script with timeout and improved error handling
     local script_exit_code
     
-    # Capture both stdout and stderr, but let them also display normally
-    if script_output=$(timeout 1800 bash "$script_path" 2>&1); then
+    # Execute script without output redirection to prevent hanging
+    # and redirect stdin from /dev/null to prevent prompts from hanging
+    # Use shorter timeout to detect issues faster
+    if timeout 600 bash "$script_path" < /dev/null; then
         script_exit_code=0
     else
         script_exit_code=$?
     fi
     
     # Clean up environment variables
-    unset FORCE_INSTALL INSTALLING_SOFTWARE
+    unset FORCE_INSTALL INSTALLING_SOFTWARE DEBIAN_FRONTEND
     
     # Enhanced error reporting based on exit code
     if [ $script_exit_code -eq 0 ]; then
         log_install_success "$software"
         return 0
     elif [ $script_exit_code -eq 124 ]; then
-        log_install_failure "$software" "custom installation script timed out after 30 minutes"
+        log_install_failure "$software" "custom installation script timed out after 10 minutes"
         return 1
     else
         log_install_failure "$software" "custom installation script failed with exit code $script_exit_code"
-        # Log last few lines of output for debugging if available
-        if [ -n "$script_output" ]; then
-            log_error "Last output from script:"
-            echo "$script_output" | tail -n 5 | while read -r line; do
-                log_error "  $line"
-            done
-        fi
         return 1
     fi
 }
@@ -509,103 +525,4 @@ validate_package_params() {
     fi
     
     return 0
-}
-
-# Function to install APT package with enhanced validation
-install_apt_package_safe() {
-    local package_name="$1"
-    local version="${2:-latest}"
-    local force_install="${3:-false}"
-    
-    # Validate parameters
-    if ! validate_package_params "$package_name" "$version"; then
-        return 1
-    fi
-    
-    log_info "Installing APT package: $package_name ($version)"
-    
-    # Check if already installed (unless forced)
-    if [ "$force_install" != "true" ] && dpkg -l | grep -q "^ii.*$package_name "; then
-        local current_version
-        current_version=$(dpkg -l | grep "^ii.*$package_name " | awk '{print $3}' | head -n1)
-        log_info "$package_name is already installed (version: $current_version)"
-        return 0
-    fi
-    
-    # Update package lists
-    if ! update_package_lists; then
-        log_error "Failed to update package lists"
-        return 1
-    fi
-    
-    # Install package
-    local install_cmd="sudo apt-get install -y"
-    
-    if [ "$version" != "latest" ]; then
-        # Sanitize version for command
-        version=$(sanitize_version_string "$version")
-        install_cmd="$install_cmd ${package_name}=${version}"
-    else
-        install_cmd="$install_cmd $package_name"
-    fi
-    
-    if log_command "$install_cmd"; then
-        log_success "$package_name installed successfully"
-        return 0
-    else
-        log_error "Failed to install $package_name"
-        return 1
-    fi
-}
-
-# Function to safely install custom script with validation
-run_custom_installation_script_safe() {
-    local software_name="$1"
-    local script_path="$2"
-    local force_install="${3:-false}"
-    
-    # Validate software name
-    if [[ ! "$software_name" =~ ^[a-zA-Z0-9_-]+$ ]]; then
-        log_error "Invalid software name: $software_name"
-        return 1
-    fi
-    
-    # Validate script path
-    if [ ! -f "$script_path" ]; then
-        log_error "Installation script not found: $script_path"
-        return 1
-    fi
-    
-    # Check if script path is within expected directory structure
-    if [[ ! "$script_path" =~ /(shell-setup|custom-software|configurations)/[a-zA-Z0-9_-]*\.sh$ ]]; then
-        log_error "Script path does not match expected pattern: $script_path"
-        return 1
-    fi
-    
-    # Check script permissions and ownership
-    if [ ! -r "$script_path" ]; then
-        log_error "Script is not readable: $script_path"
-        return 1
-    fi
-    
-    if [ ! -x "$script_path" ]; then
-        log_warn "Script is not executable, making it executable: $script_path"
-        chmod +x "$script_path"
-    fi
-    
-    log_info "Running custom installation script for $software_name"
-    log_debug "Script path: $script_path"
-    
-    # Set environment variables for the script
-    export FORCE_INSTALL="$force_install"
-    export INSTALLATION_SOFTWARE_NAME="$software_name"
-    
-    # Run the script in a subshell to contain any environment changes
-    if (cd "$(dirname "$script_path")" && bash "./$(basename "$script_path")"); then
-        log_success "Custom installation script completed successfully: $software_name"
-        return 0
-    else
-        log_error "Custom installation script failed: $software_name"
-        return 1
-    fi
 }

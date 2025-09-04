@@ -23,6 +23,11 @@ if [ -f "$UTILS_DIR/installation-framework.sh" ]; then
     FRAMEWORK_AVAILABLE="true"
 fi
 
+# Source package manager utilities
+if [ -f "$UTILS_DIR/package-manager.sh" ]; then
+    source "$UTILS_DIR/package-manager.sh"
+fi
+
 # Initialize script using framework if available
 if [ "$FRAMEWORK_AVAILABLE" = "true" ] && command -v initialize_script >/dev/null 2>&1; then
     initialize_script "$SOFTWARE_NAME" "$SOFTWARE_DESCRIPTION" "$COMMAND_NAME"
@@ -74,10 +79,24 @@ install_dotnet_sdk() {
         return 1
     fi
     
+    # Setup non-interactive environment for package installation
+    setup_noninteractive_apt
+    
     # Install prerequisites
     log_info "Installing prerequisites..."
-    sudo apt-get update >/dev/null 2>&1
-    sudo apt-get install -y wget apt-transport-https software-properties-common >/dev/null 2>&1
+    if safe_apt_update; then
+        log_info "Package list updated successfully"
+    else
+        log_error "Failed to update package list"
+        return 1
+    fi
+    
+    if safe_apt_install wget apt-transport-https software-properties-common; then
+        log_info "Prerequisites installed successfully"
+    else
+        log_error "Failed to install prerequisites"
+        return 1
+    fi
     
     # Get Ubuntu version
     local ubuntu_version=$(lsb_release -rs)
@@ -129,11 +148,21 @@ install_dotnet_sdk() {
     
     # Update package list
     log_info "Updating package lists..."
-    sudo apt-get update >/dev/null 2>&1
+    if safe_apt_update; then
+        log_info "Package list updated successfully"
+    else
+        log_error "Failed to update package list after adding Microsoft repository"
+        return 1
+    fi
     
     # Install .NET SDK 8
     log_info "Installing .NET SDK 8..."
-    sudo apt-get install -y dotnet-sdk-8.0 >/dev/null 2>&1
+    if safe_apt_install dotnet-sdk-8.0; then
+        log_info ".NET SDK 8 installed successfully"
+    else
+        log_error "Failed to install .NET SDK 8"
+        return 1
+    fi
     
     # Verify installation using framework if available
     if [ "$FRAMEWORK_AVAILABLE" = "true" ] && command -v verify_installation >/dev/null 2>&1; then

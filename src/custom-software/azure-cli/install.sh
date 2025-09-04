@@ -15,6 +15,11 @@ else
     exit 1
 fi
 
+# Source package manager utilities
+if [ -f "$UTILS_DIR/package-manager.sh" ]; then
+    source "$UTILS_DIR/package-manager.sh"
+fi
+
 # Enable error handling
 set -e
 
@@ -33,7 +38,8 @@ install_azure_cli() {
             
             # Check for updates
             log_info "Checking for Azure CLI updates..."
-            if az upgrade --all --yes >/dev/null 2>&1; then
+            export DEBIAN_FRONTEND=noninteractive
+            if timeout 300 az upgrade --all --yes; then
                 local new_version
                 new_version=$(get_command_version "az" "version")
                 if [ "$current_version" != "$new_version" ]; then
@@ -42,7 +48,7 @@ install_azure_cli() {
                     log_info "Azure CLI is already up to date"
                 fi
             else
-                log_warn "Failed to check for Azure CLI updates"
+                log_warn "Failed to check for Azure CLI updates (may have timed out)"
             fi
             return 0
         fi
@@ -71,19 +77,43 @@ install_azure_cli() {
     # Download and install Microsoft signing key
     log_info "Adding Microsoft repository signing key..."
     sudo mkdir -p /etc/apt/keyrings
-    curl -sLS https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | sudo tee /etc/apt/keyrings/microsoft.gpg > /dev/null
-    sudo chmod go+r /etc/apt/keyrings/microsoft.gpg
+    
+    if timeout 120 curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | sudo tee /etc/apt/keyrings/microsoft.gpg >/dev/null; then
+        log_info "Microsoft signing key added successfully"
+        sudo chmod go+r /etc/apt/keyrings/microsoft.gpg
+    else
+        log_error "Failed to download and install Microsoft signing key"
+        return 1
+    fi
 
     # Add Azure CLI repository
     log_info "Adding Azure CLI repository..."
     local az_repo
     az_repo=$(lsb_release -cs)
-    echo "deb [arch=`dpkg --print-architecture` signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/azure-cli/ $az_repo main" | sudo tee /etc/apt/sources.list.d/azure-cli.list > /dev/null
+    if echo "deb [arch=`dpkg --print-architecture` signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/azure-cli/ $az_repo main" | sudo tee /etc/apt/sources.list.d/azure-cli.list >/dev/null; then
+        log_info "Azure CLI repository added successfully"
+    else
+        log_error "Failed to add Azure CLI repository"
+        return 1
+    fi
 
     # Update package list and install Azure CLI
     log_info "Installing Azure CLI package..."
-    sudo apt-get update >/dev/null 2>&1
-    sudo apt-get install -y azure-cli >/dev/null 2>&1
+    setup_noninteractive_apt
+    
+    if safe_apt_update; then
+        log_info "Package list updated successfully"
+    else
+        log_error "Failed to update package list for Azure CLI"
+        return 1
+    fi
+    
+    if safe_apt_install azure-cli; then
+        log_info "Azure CLI package installed successfully"
+    else
+        log_error "Failed to install Azure CLI package"
+        return 1
+    fi
 
     # Verify installation
     if verify_installation "az" "any"; then

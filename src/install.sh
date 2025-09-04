@@ -887,6 +887,10 @@ main() {
     # Read settings from config
     read_settings
     
+    # Setup non-interactive APT environment early to prevent hanging
+    log_info "Setting up non-interactive APT environment..."
+    setup_noninteractive_apt
+    
     # Show dry run notice
     if [ "$DRY_RUN" = "true" ]; then
         log_info "🔍 DRY RUN MODE - No actual installations will be performed"

@@ -255,8 +255,17 @@ get_apt_latest_version() {
     
     # Update package list if not done recently
     if [ ! -f "/var/lib/apt/periodic/update-success-stamp" ] || [ $(find /var/lib/apt/periodic/update-success-stamp -mmin +60 2>/dev/null | wc -l) -eq 1 ]; then
-        log_debug "Updating apt package list"
-        sudo apt-get update >/dev/null 2>&1
+        log_debug "Updating apt package list (version check)"
+        if command_exists safe_apt_update; then
+            if ! safe_apt_update; then
+                log_warn "safe_apt_update failed during version fetch for $package"
+            fi
+        else
+            # Fallback minimal update without suppression
+            if ! sudo -E apt-get update; then
+                log_warn "apt-get update failed during version fetch for $package"
+            fi
+        fi
     fi
     
     version=$(apt-cache policy "$package" 2>/dev/null | grep "Candidate:" | awk '{print $2}')

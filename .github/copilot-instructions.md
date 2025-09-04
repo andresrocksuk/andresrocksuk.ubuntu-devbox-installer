@@ -130,6 +130,44 @@ configurations: # Post-install configuration steps
 5. Implement error handling to catch and log unexpected behavior.
 6. Regularly review and test scripts for vulnerabilities, especially when handling external inputs.
 
+## APT Package Management - Critical Hanging Prevention
+
+**CRITICAL:** When working with apt-get commands in Ubuntu 24.04 environments, follow these mandatory practices to prevent hanging:
+
+### Forbidden Patterns (WILL CAUSE HANGING)
+```bash
+# ❌ NEVER USE - These patterns cause indefinite hanging in Ubuntu 24.04:
+sudo apt-get update 2>/dev/null
+sudo apt-get install -y package 2>&1
+sudo -E apt-get update -qq
+sudo -E apt-get install -y -qq package
+```
+
+### Required Safe Patterns
+```bash
+# ✅ ALWAYS USE - Safe functions from package-manager.sh:
+source "$UTILS_DIR/package-manager.sh"
+setup_noninteractive_apt    # Prevents dpkg trigger hangs
+safe_apt_update            # Safe update with timeout protection
+safe_apt_install package   # Safe install with timeout protection
+```
+
+### Implementation Requirements
+1. **Always source package-manager.sh** in custom-software install scripts
+2. **Call setup_noninteractive_apt()** early in installation process
+3. **Replace ALL sudo apt-get patterns** with safe_apt_* functions
+4. **Never suppress error output** with 2>/dev/null or 2>&1 on apt commands
+5. **Use timeout protections** for all package operations
+
+### Root Cause
+Ubuntu 24.04 has dpkg trigger issues that cause hanging when:
+- Output redirection masks error messages
+- Non-interactive environment not properly configured
+- dpkg triggers wait for user input that never comes
+- Multiple apt operations run without proper synchronization
+
+This hanging prevention is mandatory for ALL custom-software installation scripts.
+
 ## Test Scripts
 
 - Create dedicated test scripts in `src/tests/` for scripts.

@@ -90,6 +90,9 @@ install_powershell_core() {
         log_error "Failed to download Microsoft repository package"
         return 1
     fi
+
+    # Setup non-interactive environment before dpkg operations
+    setup_noninteractive_apt
     
     if ! sudo dpkg -i packages-microsoft-prod.deb; then
         log_error "Failed to install Microsoft repository package"

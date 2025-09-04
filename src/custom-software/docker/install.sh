@@ -18,6 +18,11 @@ if [ -f "$UTILS_DIR/installation-framework.sh" ]; then
     FRAMEWORK_AVAILABLE=true
 fi
 
+# Source package manager utilities
+if [ -f "$UTILS_DIR/package-manager.sh" ]; then
+    source "$UTILS_DIR/package-manager.sh"
+fi
+
 # Source utilities - either from framework or standalone fallback
 if [ "$FRAMEWORK_AVAILABLE" = "true" ]; then
     # Framework provides all utilities we need
@@ -120,9 +125,12 @@ install_docker() {
         fi
     fi
     
+    # Setup non-interactive environment for package installation
+    setup_noninteractive_apt
+    
     # Update package list
     log_info "Updating package list..."
-    if ! sudo apt-get update -qq; then
+    if ! safe_apt_update; then
         log_error "Failed to update package list"
         return 1
     fi
@@ -136,7 +144,7 @@ install_docker() {
         "lsb-release"
     )
     
-    if ! sudo apt-get install -y "${prerequisites[@]}"; then
+    if ! safe_apt_install "${prerequisites[@]}"; then
         log_error "Failed to install prerequisites"
         return 1
     fi
@@ -171,7 +179,7 @@ install_docker() {
     
     # Update package list with new repository
     log_info "Updating package list with Docker repository..."
-    if ! sudo apt-get update -qq; then
+    if ! safe_apt_update; then
         log_error "Failed to update package list after adding Docker repository"
         return 1
     fi
@@ -186,7 +194,7 @@ install_docker() {
         "docker-compose-plugin"
     )
     
-    if ! sudo apt-get install -y "${docker_packages[@]}"; then
+    if ! safe_apt_install "${docker_packages[@]}"; then
         log_error "Failed to install Docker packages"
         return 1
     fi

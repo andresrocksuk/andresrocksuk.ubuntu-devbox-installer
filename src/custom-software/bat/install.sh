@@ -23,6 +23,11 @@ if [ -f "$UTILS_DIR/installation-framework.sh" ]; then
     FRAMEWORK_AVAILABLE="true"
 fi
 
+# Source package manager utilities
+if [ -f "$UTILS_DIR/package-manager.sh" ]; then
+    source "$UTILS_DIR/package-manager.sh"
+fi
+
 # Initialize script using framework if available
 if [ "$FRAMEWORK_AVAILABLE" = "true" ] && command -v initialize_script >/dev/null 2>&1; then
     initialize_script "$SOFTWARE_NAME" "$SOFTWARE_DESCRIPTION" "$COMMAND_NAME"
@@ -68,13 +73,16 @@ install_bat() {
         fi
     fi
     
+    # Setup non-interactive environment for package installation
+    setup_noninteractive_apt
+    
     # Update package list
     log_info "Updating package list..."
-    sudo apt-get update -qq
+    safe_apt_update
     
     # Install bat
     log_info "Installing bat via apt..."
-    sudo apt-get install -y bat
+    safe_apt_install bat
     
     # Setup bat alias if needed
     setup_bat_alias

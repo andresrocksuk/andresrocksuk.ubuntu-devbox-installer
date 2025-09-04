@@ -42,6 +42,11 @@ else
     fi
 fi
 
+# Source package manager utilities
+if [ -f "$UTILS_DIR/package-manager.sh" ]; then
+    source "$UTILS_DIR/package-manager.sh"
+fi
+
 install_nodejs() {
     log_info "Installing $SOFTWARE_DESCRIPTION..."
     
@@ -70,10 +75,13 @@ install_nodejs() {
         fi
     fi
     
+    # Setup non-interactive environment for package installation
+    setup_noninteractive_apt
+    
     # Install prerequisites
     log_info "Installing prerequisites..."
-    sudo apt-get update
-    sudo apt-get install -y curl gnupg2 software-properties-common
+    safe_apt_update
+    safe_apt_install curl gnupg2 software-properties-common
     
     # Get the latest LTS version number
     log_info "Fetching latest LTS version information..."
@@ -155,16 +163,25 @@ install_nodejs() {
         fi
     fi
     
-    # Run the setup script
-    sudo bash "$setup_script"
+    # Run the setup script with proper environment
+    log_info "Running NodeSource setup script..."
+    export DEBIAN_FRONTEND=noninteractive
+    if timeout 300 sudo -E bash "$setup_script"; then
+        log_info "NodeSource setup script completed successfully"
+    else
+        local exit_code=$?
+        log_error "NodeSource setup script failed or timed out (exit code: $exit_code)"
+        rm -rf "$temp_dir"
+        return 1
+    fi
     
     # Clean up setup script
     rm -rf "$temp_dir"
     
     # Install Node.js
     log_info "Installing Node.js and npm..."
-    sudo apt-get update
-    sudo apt-get install -y nodejs
+    safe_apt_update
+    safe_apt_install nodejs
     
     # Verify installation using framework if available
     if [ "$FRAMEWORK_AVAILABLE" = "true" ] && command -v verify_installation >/dev/null 2>&1; then
@@ -276,10 +293,10 @@ install_global_packages() {
     
     for package in "${packages[@]}"; do
         log_info "Installing $package..."
-        if npm install -g "$package" >/dev/null 2>&1; then
+        if timeout 120 npm install -g "$package" >/dev/null 2>&1; then
             log_success "$package installed successfully"
         else
-            log_warn "Failed to install $package"
+            log_warn "Failed to install $package (may have timed out)"
         fi
     done
     

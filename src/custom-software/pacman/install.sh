@@ -16,6 +16,11 @@ else
     exit 1
 fi
 
+# Source package manager utilities
+if [ -f "$UTILS_DIR/package-manager.sh" ]; then
+    source "$UTILS_DIR/package-manager.sh"
+fi
+
 # Enable error handling
 set -e
 
@@ -93,14 +98,13 @@ install_pacman_on_debian() {
     
     # Install build dependencies
     log_info "Installing build dependencies..."
-    sudo apt-get update >/dev/null 2>&1
-    sudo apt-get install -y build-essential autoconf pkg-config libarchive-dev \
-        libssl-dev libgpgme-dev libcurl4-openssl-dev meson >/dev/null 2>&1
+    safe_apt_update
+    safe_apt_install build-essential autoconf pkg-config libarchive-dev libssl-dev libgpgme-dev libcurl4-openssl-dev meson
     
     # Try to install pacman from package repository first (if available)
     if apt-cache show pacman >/dev/null 2>&1; then
         log_info "Installing pacman from package repository..."
-        if sudo apt-get install -y pacman; then
+        if safe_apt_install pacman; then
             log_info "Pacman installed from package repository"
             return 0
         else
@@ -261,7 +265,8 @@ install_pacman_generic() {
     # Try to install pacman package if available
     if command_exists "apt-get"; then
         log_info "Installing pacman from package repository..."
-        if sudo apt-get update && sudo apt-get install -y pacman; then
+        setup_noninteractive_apt
+        if safe_apt_update && safe_apt_install pacman; then
             log_info "Pacman installed from package repository"
             return 0
         fi

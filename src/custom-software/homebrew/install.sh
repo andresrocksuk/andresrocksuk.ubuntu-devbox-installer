@@ -24,6 +24,11 @@ else
     exit 1
 fi
 
+# Source package manager utilities
+if [ -f "$UTILS_DIR/package-manager.sh" ]; then
+    source "$UTILS_DIR/package-manager.sh"
+fi
+
 # Enable error handling
 set -e
 
@@ -77,10 +82,11 @@ install_homebrew_for_linuxbrew_user() {
     
     # Install build dependencies if not already present
     log_info "Installing build dependencies..."
-    if command -v apt-get >/dev/null 2>&1; then
+    if command -v apt-get; then
         log_debug "Using apt-get to install dependencies..."
-        if sudo apt-get update >/dev/null 2>&1; then
-            sudo apt-get install -y build-essential procps file curl tar >/dev/null 2>&1
+        setup_noninteractive_apt
+        if safe_apt_update; then
+            safe_apt_install build-essential procps file curl tar
         else
             log_warn "Failed to update package lists, continuing anyway..."
         fi
@@ -146,10 +152,10 @@ install_homebrew_from_tarball() {
     
     # Install build dependencies if not already present
     log_info "Installing build dependencies..."
-    if command -v apt-get >/dev/null 2>&1; then
+    if command -v apt-get; then
         log_debug "Using apt-get to install dependencies..."
-        if sudo apt-get update >/dev/null 2>&1; then
-            sudo apt-get install -y build-essential procps file curl tar >/dev/null 2>&1
+        if safe_apt_update; then
+            safe_apt_install build-essential procps file curl tar
         else
             log_warn "Failed to update package lists, continuing anyway..."
         fi
@@ -215,10 +221,10 @@ install_homebrew_from_git() {
     
     # Install build dependencies if not already present
     log_info "Installing build dependencies..."
-    if command -v apt-get >/dev/null 2>&1; then
+    if command -v apt-get; then
         log_debug "Using apt-get to install dependencies..."
-        if sudo apt-get update >/dev/null 2>&1; then
-            sudo apt-get install -y build-essential procps file git curl >/dev/null 2>&1
+        if safe_apt_update; then
+            safe_apt_install build-essential procps file git curl
         else
             log_warn "Failed to update package lists, continuing anyway..."
         fi

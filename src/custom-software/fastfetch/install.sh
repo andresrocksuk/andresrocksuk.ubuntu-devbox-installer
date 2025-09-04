@@ -24,6 +24,11 @@ if [ -f "$UTILS_DIR/installation-framework.sh" ]; then
     FRAMEWORK_AVAILABLE=true
 fi
 
+# Source package manager utilities
+if [ -f "$UTILS_DIR/package-manager.sh" ]; then
+    source "$UTILS_DIR/package-manager.sh"
+fi
+
 # Source utilities if available (fallback)
 if [ -f "$UTILS_DIR/logger.sh" ]; then
     source "$UTILS_DIR/logger.sh"
@@ -117,10 +122,11 @@ install_fastfetch_fallback() {
     
     # Install the package
     log_info "Installing fastfetch package..."
-    sudo dpkg -i "$temp_file" || {
+    if ! sudo dpkg -i "$temp_file"; then
         log_info "Fixing dependencies..."
-        sudo apt-get install -f -y
-    }
+        setup_noninteractive_apt
+        safe_apt_install -f
+    fi
     
     # Clean up
     rm -f "$temp_file"

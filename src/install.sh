@@ -514,16 +514,17 @@ install_python_packages() {
         local name=$(yq eval ".python_packages[$i].name" "$CONFIG_FILE")
         local version=$(yq eval ".python_packages[$i].version // \"latest\"" "$CONFIG_FILE")
         local description=$(yq eval ".python_packages[$i].description // \"\"" "$CONFIG_FILE")
+        local install_method=$(yq eval ".python_packages[$i].install_method // \"pipx\"" "$CONFIG_FILE")
         
         if [ -n "$name" ] && [ "$name" != "null" ]; then
             if [ "$DRY_RUN" = "true" ]; then
-                log_info "[DRY RUN] Would install Python package: $name ($version) - $description"
+                log_info "[DRY RUN] Would install Python package: $name ($version) via $install_method - $description"
             else
-                if install_python_package "$name" "$version" "$FORCE_INSTALL"; then
-                    INSTALLATION_SUMMARY+=("✅ $name ($version) [Python]")
+                if install_python_package "$name" "$version" "$install_method" "$FORCE_INSTALL"; then
+                    INSTALLATION_SUMMARY+=("✅ $name ($version) [Python-$install_method]")
                     packages_installed=true
                 else
-                    FAILED_INSTALLATIONS+=("❌ $name ($version) [Python]")
+                    FAILED_INSTALLATIONS+=("❌ $name ($version) [Python-$install_method]")
                 fi
             fi
         fi

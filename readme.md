@@ -57,6 +57,9 @@ For advanced options, see the [Remote Installation Guide](docs/remote-installati
    
    # Reset WSL and install fresh
    .\install-wsl.ps1 -ResetWSL -AutoInstall
+
+   # Reset WSL with feature enabling (requires admin privileges)
+   .\install-wsl.ps1 -ResetWSL -CheckWSLFeaturesEnabled -AutoInstall
    ```
 
 3. **Verify installation:**

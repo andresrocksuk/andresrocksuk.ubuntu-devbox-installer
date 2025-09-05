@@ -315,6 +315,11 @@ python_packages:
     description: "Pre-commit hooks framework"
     install_method: pipx           # Isolated installation
 
+  - name: checkov
+    version: latest
+    description: "Infrastructure as Code security scanner"
+    install_method: pip            # Global pip installation
+
   - name: requests
     version: ">=2.25.0"
     description: "HTTP library"
@@ -333,9 +338,15 @@ python_packages:
 - `install_method`: `"pip"` | `"pipx"` | `"apt"` (defaults to `"pipx"`)
 
 **Installation Methods:**
-- `pip`: Global installation via pip (not recommended for applications)
-- `pipx`: Isolated application installation (recommended for CLI tools)
+- `pip`: Global installation via pip (requires --break-system-packages flag for Ubuntu 24.04+)
+- `pipx`: Isolated application installation (recommended for CLI tools, default method)
 - `apt`: Install via apt package manager (for system integration)
+
+**Important Notes:**
+- The `install_method` property is fully supported as of version 1.1.0
+- If `install_method` is not specified, `pipx` is used as the default
+- For `apt` method, use the apt package name (e.g., `python3-requests` instead of `requests`)
+- For security tools and CLI applications, `pipx` is recommended for isolation
 
 ### 8. PowerShell Modules Section
 

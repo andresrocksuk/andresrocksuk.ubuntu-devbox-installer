@@ -32,7 +32,8 @@ param(
         }
         return $true
     })]
-    [string]$Config = ""
+    [string]$Config = "",
+    [switch]$CheckWSLFeaturesEnabled
 )
 
 <#
@@ -1008,8 +1009,8 @@ function Main {
     Write-Info "======================================"
     Write-Info ""
     # Check admin privileges
-    if (-not (Test-AdminPrivileges)) {
-        Write-ErrorMessage "This script requires administrator privileges"
+    if ($CheckWSLFeaturesEnabled -and -not (Test-AdminPrivileges)) {
+        Write-ErrorMessage "This script requires administrator privileges when modifying WSL features"
         Write-Info "Please run PowerShell as Administrator and try again"
         exit 1
     }
@@ -1042,7 +1043,7 @@ function Main {
         }
         
         # Enable WSL features
-        if (-not (Enable-WSLFeatures)) {
+        if ($CheckWSLFeaturesEnabled -and -not (Enable-WSLFeatures)) {
             Write-ErrorMessage "Failed to enable WSL features"
             exit 1
         }

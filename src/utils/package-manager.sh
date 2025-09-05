@@ -149,13 +149,45 @@ install_apt_package() {
     fi
 }
 
-# Function to install Python packages
+# Function to install Python packages with different methods
 install_python_package() {
     local package="$1"
     local version="$2"
-    local force_install="${3:-false}"
+    local install_method="${3:-pipx}"
+    local force_install="${4:-false}"
     
-    log_install_start "$package (pip system-wide)"
+    # Validate and sanitize install_method
+    case "$install_method" in
+        pip|pipx|apt)
+            # Valid methods
+            ;;
+        *)
+            log_warn "Invalid install_method '$install_method' for package '$package', defaulting to pipx"
+            install_method="pipx"
+            ;;
+    esac
+    
+    log_install_start "$package ($install_method)"
+    
+    # Route to appropriate installation method
+    case "$install_method" in
+        pip)
+            install_python_package_pip "$package" "$version" "$force_install"
+            ;;
+        pipx)
+            install_python_package_pipx "$package" "$version" "$force_install"
+            ;;
+        apt)
+            install_python_package_apt "$package" "$version" "$force_install"
+            ;;
+    esac
+}
+
+# Function to install Python packages via pip (global installation)
+install_python_package_pip() {
+    local package="$1"
+    local version="$2"
+    local force_install="${3:-false}"
     
     # Check if Python is installed
     if ! command_exists "python3"; then
@@ -192,6 +224,58 @@ install_python_package() {
         log_install_failure "$package" "pip system-wide installation failed"
         return 1
     fi
+}
+
+# Function to install Python packages via pipx (isolated installation)
+install_python_package_pipx() {
+    local package="$1"
+    local version="$2"
+    local force_install="${3:-false}"
+    
+    # Check if Python is installed
+    if ! command_exists "python3"; then
+        log_install_failure "$package" "Python3 is not installed"
+        return 1
+    fi
+    
+    # Check if pipx is installed
+    if ! command_exists "pipx"; then
+        log_install_failure "$package" "pipx is not installed"
+        return 1
+    fi
+    
+    # Check if already installed with pipx
+    if [ "$force_install" != "true" ] && pipx list | grep -q "^$package "; then
+        log_install_skip "$package" "already installed via pipx"
+        return 0
+    fi
+    
+    # Install package using pipx
+    local pipx_cmd="pipx install"
+    
+    if [ "$version" != "latest" ]; then
+        pipx_cmd="$pipx_cmd $package==$version"
+    else
+        pipx_cmd="$pipx_cmd $package"
+    fi
+    
+    if log_command "$pipx_cmd"; then
+        log_install_success "$package"
+        return 0
+    else
+        log_install_failure "$package" "pipx installation failed"
+        return 1
+    fi
+}
+
+# Function to install Python packages via apt
+install_python_package_apt() {
+    local package="$1"
+    local version="$2"
+    local force_install="${3:-false}"
+    
+    # For apt installation, route to regular apt package installation
+    install_apt_package "$package" "$version" "$force_install"
 }
 
 # Function to install PowerShell modules

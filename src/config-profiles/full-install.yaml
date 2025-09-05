@@ -234,11 +234,47 @@ custom_software:
     version_command: k9s
     version_flag: version
 
+  - name: terraform-docs
+    description: "Generate documentation for Terraform modules"
+    script: custom-software/terraform-docs/install.sh
+    version_command: terraform-docs
+    version_flag: --version
+
+  - name: tflint
+    description: "Terraform linter"
+    script: custom-software/tflint/install.sh
+    version_command: tflint
+    version_flag: --version
+
+  - name: tfsec
+    description: "Terraform security scanner"
+    script: custom-software/tfsec/install.sh
+    version_command: tfsec
+    version_flag: --version
+
+  - name: trivy
+    description: "Vulnerability scanner for containers and code"
+    script: custom-software/trivy/install.sh
+    version_command: trivy
+    version_flag: --version
+
+  - name: gitleaks
+    description: "Secret detection tool for Git repositories"
+    script: custom-software/gitleaks/install.sh
+    version_command: gitleaks
+    version_flag: version
+
 # Python packages to install via pip
 python_packages:
   - name: pre-commit
     version: latest
     description: "Pre-commit hooks framework"
+    install_method: pipx
+
+  - name: checkov
+    version: latest
+    description: "Infrastructure as Code security scanner"
+    install_method: pipx
 
 # PowerShell modules to install
 powershell_modules:

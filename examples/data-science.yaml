@@ -96,27 +96,38 @@ custom_software:
     script: golang/install.sh
     version_command: go
     version_flag: version
+  - name: gitleaks
+    description: "Secret detection tool for Git repositories"
+    script: gitleaks/install.sh
+    version_command: gitleaks
+    version_flag: version
 
 # Essential Python packages for data science
 python_packages:
   - name: jupyter
     version: latest
     description: "Interactive computing environment"
+    install_method: pipx
   - name: jupyterlab
     version: latest
     description: "Next-generation web-based UI for Jupyter"
+    install_method: pipx
   - name: numpy
     version: latest
     description: "Numerical computing library"
+    install_method: pip
   - name: pandas
     version: latest
     description: "Data manipulation and analysis"
+    install_method: pip
   - name: matplotlib
     version: latest
     description: "Plotting library"
+    install_method: pip
   - name: seaborn
     version: latest
     description: "Statistical data visualization"
+    install_method: pip
   - name: plotly
     version: latest
     description: "Interactive plotting library"

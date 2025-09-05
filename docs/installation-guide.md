@@ -92,6 +92,9 @@ If you want to start completely fresh:
 # Reset WSL and install everything from scratch
 .\install-wsl.ps1 -ResetWSL -AutoInstall
 
+# Reset WSL with feature enabling (requires admin privileges)
+.\install-wsl.ps1 -ResetWSL -CheckWSLFeaturesEnabled -AutoInstall
+
 # WARNING: This will destroy existing WSL Ubuntu installation
 ```
 
@@ -438,6 +441,9 @@ For faster installations:
 
 # Use selective installation for only needed components
 .\install-wsl.ps1 -AutoInstall -Config "prerequisites","apt_packages"
+
+# Enable WSL features during reset (requires admin privileges)
+.\install-wsl.ps1 -ResetWSL -CheckWSLFeaturesEnabled -AutoInstall
 ```
 
 This completes the installation guide. Your WSL Ubuntu development environment should now be ready for productive development work!

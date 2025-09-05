@@ -309,6 +309,7 @@ param(
     [string]$Distribution,          # WSL distribution name
     [string]$InstallPath,           # Path to installation scripts
     [string[]]$Config               # Configuration sections to run
+    [switch]$CheckWSLFeaturesEnabled # Enable WSL features (requires admin)
 )
 ```
 
@@ -327,6 +328,9 @@ param(
 # Unattended installation
 $env:WSL_DEFAULT_PASSWORD = "password"
 .\install-wsl.ps1 -AutoInstall -Force
+
+# Enable WSL features (requires admin privileges)
+.\install-wsl.ps1 -ResetWSL -CheckWSLFeaturesEnabled -AutoInstall
 ```
 
 #### Environment Variables

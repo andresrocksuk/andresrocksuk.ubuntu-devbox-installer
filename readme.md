@@ -35,7 +35,7 @@ irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox
 
 #### From Linux/WSL Bash:
 ```bash
-curl -sSL "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/main/install-remote.sh" | bash
+curl -sSL "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/main/install-remote.sh" | sudo bash
 ```
 
 For advanced options, see the [Remote Installation Guide](docs/remote-installation.md).

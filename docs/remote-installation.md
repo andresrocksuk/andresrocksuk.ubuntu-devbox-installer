@@ -17,7 +17,7 @@ irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox
 ### From Linux/WSL Bash:
 
 ```bash
-curl -sSL "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/main/install-remote.sh" | bash
+curl -sSL "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/main/install-remote.sh" | sudo bash
 ```
 
 ## Advanced Usage
@@ -57,26 +57,26 @@ curl -sSL "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-
 #### Show Help
 
 ```bash
-curl -sSL "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/main/install-remote.sh" | bash -s -- --help
+curl -sSL "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/main/install-remote.sh" | sudo bash -s -- --help
 ```
 
 #### Installation with Parameters
 
 ```bash
 # Force reinstall everything
-curl -sSL "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/main/install-remote.sh" | bash -s -- --force
+curl -sSL "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/main/install-remote.sh" | sudo bash -s -- --force
 
 # Install only specific sections
-curl -sSL "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/main/install-remote.sh" | bash -s -- --sections "prerequisites,apt_packages"
+curl -sSL "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/main/install-remote.sh" | sudo bash -s -- --sections "prerequisites,apt_packages"
 
 # Use custom configuration from URL
-curl -sSL "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/main/install-remote.sh" | bash -s -- --config "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/refs/heads/main/examples/minimal-dev.yaml"
+curl -sSL "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/main/install-remote.sh" | sudo bash -s -- --config "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/refs/heads/main/examples/minimal-dev.yaml"
 
 # Dry run to see what would be installed
-curl -sSL "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/main/install-remote.sh" | bash -s -- --dry-run
+curl -sSL "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/main/install-remote.sh" | sudo bash -s -- --dry-run
 
 # Use development branch
-curl -sSL "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/dev/install-remote.sh" | bash -s -- --branch "dev"
+curl -sSL "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/dev/install-remote.sh" | sudo bash -s -- --branch "dev"
 
 # Download script first, then run (alternative approach)
 curl -sSL -o install-remote.sh "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/main/install-remote.sh"
@@ -93,7 +93,7 @@ irm "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox
 
 #### Bash:
 ```bash
-curl -sSL "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/main/install-remote.sh" | bash -s -- --help
+curl -sSL "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/main/install-remote.sh" | sudo bash -s -- --help
 ```
 
 ## How It Works

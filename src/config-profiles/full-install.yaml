@@ -264,13 +264,17 @@ custom_software:
     version_command: gitleaks
     version_flag: version
 
-# Python packages to install via pip
-python_packages:
+# System Python packages (installed system-wide)
+system_python_packages:
   - name: pre-commit
     version: latest
     description: "Pre-commit hooks framework"
-    install_method: pipx
+    install_method: pip
 
+# User Python packages (installed per-user, isolated)
+# Note: The user_python_packages section is not added in the default installation since by
+# default the installation is system-wide.
+user_python_packages:
   - name: checkov
     version: latest
     description: "Infrastructure as Code security scanner"
@@ -376,7 +380,7 @@ installation_order:
   - apt_packages
   - shell_setup
   - custom_software
-  - python_packages
+  - system_python_packages
   - powershell_modules
   - nix_packages
   - configurations

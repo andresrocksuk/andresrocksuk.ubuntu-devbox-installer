@@ -149,6 +149,178 @@ install_apt_package() {
     fi
 }
 
+# Function to install user Python packages (user-specific installations)
+install_user_python_package() {
+    local package="$1"
+    local version="$2"
+    local install_method="${3:-pipx}"
+    local force_install="${4:-false}"
+    
+    # Validate and sanitize install_method
+    case "$install_method" in
+        pip|pipx)
+            # Valid methods for user packages
+            ;;
+        *)
+            log_warn "Invalid install_method '$install_method' for user package '$package', defaulting to pipx"
+            install_method="pipx"
+            ;;
+    esac
+    
+    log_install_start "$package (user-$install_method)"
+    
+    # Route to appropriate installation method
+    case "$install_method" in
+        pip)
+            install_user_python_package_pip "$package" "$version" "$force_install"
+            ;;
+        pipx)
+            install_python_package_pipx "$package" "$version" "$force_install"
+            ;;
+    esac
+}
+
+# Function to install system Python packages (system-wide installations)
+install_system_python_package() {
+    local package="$1"
+    local version="$2"
+    local install_method="${3:-pip}"
+    local force_install="${4:-false}"
+    
+    # Validate and sanitize install_method
+    case "$install_method" in
+        pip)
+            # Valid method for system packages
+            ;;
+        *)
+            log_warn "Invalid install_method '$install_method' for system package '$package', defaulting to pip"
+            install_method="pip"
+            ;;
+    esac
+    
+    log_install_start "$package (system-$install_method)"
+    
+    # Route to appropriate installation method
+    case "$install_method" in
+        pip)
+            install_system_python_package_pip "$package" "$version" "$force_install"
+            ;;
+    esac
+}
+
+# Function to install user Python packages via pip (user installation)
+install_user_python_package_pip() {
+    local package="$1"
+    local version="$2"
+    local force_install="${3:-false}"
+    
+    # Check if Python is installed
+    if ! command_exists "python3"; then
+        log_install_failure "$package" "Python3 is not installed"
+        return 1
+    fi
+    
+    # Check if pip is installed
+    if ! command_exists "pip3" && ! python3 -m pip --version >/dev/null 2>&1; then
+        log_install_failure "$package" "pip is not installed"
+        return 1
+    fi
+    
+    # Check if already installed with correct version (user installation)
+    if [ "$force_install" != "true" ] && check_user_python_package_version "$package" "$version"; then
+        log_install_skip "$package" "already installed with compatible version (user)"
+        return 0
+    fi
+    
+    # Install package for user (no --break-system-packages needed for user installs)
+    local pip_cmd="python3 -m pip install --user"
+    
+    if [ "$version" != "latest" ]; then
+        pip_cmd="$pip_cmd $package==$version"
+    else
+        pip_cmd="$pip_cmd $package"
+    fi
+    
+    if log_command "$pip_cmd"; then
+        log_install_success "$package"
+        return 0
+    else
+        log_install_failure "$package" "pip user installation failed"
+        return 1
+    fi
+}
+
+# Function to install system Python packages via pip (system-wide installation)
+install_system_python_package_pip() {
+    local package="$1"
+    local version="$2"
+    local force_install="${3:-false}"
+    
+    # Check if Python is installed
+    if ! command_exists "python3"; then
+        log_install_failure "$package" "Python3 is not installed"
+        return 1
+    fi
+    
+    # Check if pip is installed
+    if ! command_exists "pip3" && ! python3 -m pip --version >/dev/null 2>&1; then
+        log_install_failure "$package" "pip is not installed"
+        return 1
+    fi
+    
+    # Check if already installed with correct version (system-wide)
+    if [ "$force_install" != "true" ] && check_python_package_version "$package" "$version"; then
+        log_install_skip "$package" "already installed with compatible version (system)"
+        return 0
+    fi
+    
+    # Install package system-wide using sudo pip with --break-system-packages
+    # This is needed for Ubuntu 24.04 due to PEP 668 restrictions
+    local pip_cmd="sudo python3 -m pip install --break-system-packages"
+    
+    if [ "$version" != "latest" ]; then
+        pip_cmd="$pip_cmd $package==$version"
+    else
+        pip_cmd="$pip_cmd $package"
+    fi
+    
+    if log_command "$pip_cmd"; then
+        log_install_success "$package"
+        return 0
+    else
+        log_install_failure "$package" "pip system-wide installation failed"
+        return 1
+    fi
+}
+
+# Function to check user Python package version
+check_user_python_package_version() {
+    local package="$1"
+    local required_version="$2"
+    
+    # Check if package is installed in user site-packages
+    if python3 -m pip show --user "$package" >/dev/null 2>&1; then
+        local installed_version
+        installed_version=$(python3 -m pip show --user "$package" | grep "Version:" | cut -d' ' -f2)
+        
+        if [ "$required_version" = "latest" ]; then
+            log_debug "User package $package is installed with version $installed_version"
+            return 0
+        else
+            if check_version_requirement "$installed_version" "$required_version"; then
+                log_debug "User package $package version $installed_version meets requirement $required_version"
+                return 0
+            else
+                log_debug "User package $package version $installed_version does not meet requirement $required_version"
+                return 1
+            fi
+        fi
+    else
+        log_debug "User package $package is not installed"
+        return 1
+    fi
+}
+
 # Function to install Python packages with different methods
 install_python_package() {
     local package="$1"
@@ -158,7 +330,7 @@ install_python_package() {
     
     # Validate and sanitize install_method
     case "$install_method" in
-        pip|pipx|apt)
+        pip|pipx)
             # Valid methods
             ;;
         *)
@@ -176,9 +348,6 @@ install_python_package() {
             ;;
         pipx)
             install_python_package_pipx "$package" "$version" "$force_install"
-            ;;
-        apt)
-            install_python_package_apt "$package" "$version" "$force_install"
             ;;
     esac
 }
@@ -207,8 +376,8 @@ install_python_package_pip() {
         return 0
     fi
     
-    # Install package system-wide using sudo pip to bypass PEP 668 restrictions
-    # This makes the package available to all users and avoids PATH issues
+    # Install package system-wide using sudo pip with --break-system-packages
+    # This is required for Ubuntu 24.04 due to PEP 668 restrictions
     local pip_cmd="sudo python3 -m pip install --break-system-packages"
     
     if [ "$version" != "latest" ]; then
@@ -266,16 +435,6 @@ install_python_package_pipx() {
         log_install_failure "$package" "pipx installation failed"
         return 1
     fi
-}
-
-# Function to install Python packages via apt
-install_python_package_apt() {
-    local package="$1"
-    local version="$2"
-    local force_install="${3:-false}"
-    
-    # For apt installation, route to regular apt package installation
-    install_apt_package "$package" "$version" "$force_install"
 }
 
 # Function to install PowerShell modules

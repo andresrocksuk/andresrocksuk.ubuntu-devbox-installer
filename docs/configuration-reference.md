@@ -192,7 +192,53 @@ settings:
 - `log_level`: `"DEBUG"` | `"INFO"` | `"WARN"` | `"ERROR"` - Logging verbosity level
 - `max_retries`: Integer - Number of retry attempts for failed network operations
 
-### 3. Prerequisites Section
+### 3. Installation Order Section
+
+Defines the order in which installation sections are executed:
+
+```yaml
+installation_order:
+  - prerequisites
+  - apt_packages
+  - shell_setup
+  - custom_software
+  - user_python_packages
+  - system_python_packages
+  # - python_packages        # Legacy section, commented out
+  - powershell_modules
+  - nix_packages
+  - configurations
+```
+
+**Installation Order Features:**
+
+- **Configurable Order**: Specify the exact order of section execution
+- **Comment Support**: Lines starting with `#` are skipped (commented sections)
+- **Section Override**: Using `--sections` parameter bypasses installation order
+- **Default Fallback**: If no installation_order is defined, uses built-in default order
+- **Dependency Awareness**: Order should respect dependencies between sections
+
+**Valid Section Names:**
+- `prerequisites` - System packages installed first
+- `apt_packages` - Ubuntu packages via apt
+- `shell_setup` - Shell configuration tasks
+- `custom_software` - Custom installation scripts
+- `python_packages` - Legacy Python packages (deprecated)
+- `user_python_packages` - User-specific Python packages
+- `system_python_packages` - System-wide Python packages
+- `powershell_modules` - PowerShell modules
+- `nix_packages` - Nix package manager packages
+- `configurations` - Post-installation configuration tasks
+
+**Command Line Override:**
+When using the `--sections` parameter, the installation order from the config is ignored and sections are executed in the order provided:
+
+```bash
+# Execute only specific sections in provided order
+./install.sh --sections user_python_packages,system_python_packages,configurations
+```
+
+### 4. Prerequisites Section
 
 System packages that must be installed before everything else:
 
@@ -213,7 +259,7 @@ prerequisites:
 - Include tools needed by custom installation scripts
 - Don't include user applications here
 
-### 4. APT Packages Section
+### 5. APT Packages Section
 
 Ubuntu packages installed via apt package manager:
 
@@ -246,7 +292,7 @@ apt_packages:
 - `"1.2.*"`: Install latest patch version of 1.2.x
 - `">=1.2.0"`: Install version 1.2.0 or later
 
-### 5. Shell Setup Section
+### 6. Shell Setup Section
 
 Shell configuration that runs before custom software installation:
 
@@ -269,7 +315,7 @@ shell_setup:
 - `enabled`: `true` | `false` - Whether to run this configuration (required)
 - `script`: Path to script relative to software-scripts directory (required)
 
-### 6. Custom Software Section
+### 7. Custom Software Section
 
 Software not available via apt, installed using custom scripts:
 
@@ -304,11 +350,12 @@ custom_software:
 - Should use logging functions from utilities
 - Should return appropriate exit codes
 
-### 7. Python Packages Section
+### 8. Python Packages Section
 
-Python packages installed via pip, pipx, or apt:
+Python packages installed via pip or pipx:
 
 ```yaml
+# Python packages (legacy - deprecated, use user_python_packages and system_python_packages instead)
 python_packages:
   - name: pre-commit
     version: latest
@@ -320,35 +367,49 @@ python_packages:
     description: "Infrastructure as Code security scanner"
     install_method: pip            # Global pip installation
 
-  - name: requests
-    version: ">=2.25.0"
-    description: "HTTP library"
-    install_method: pip            # Global pip installation
-
-  - name: python3-venv
+# User Python packages (recommended for user-specific tools)
+user_python_packages:
+  - name: pre-commit
     version: latest
-    description: "Virtual environment support"
+    description: "Pre-commit hooks framework"
+    install_method: pipx           # Default: pipx for user packages
+
+  - name: virtualenv
+    version: latest
+    description: "Virtual environment creator"
+    install_method: pip            # User pip installation (--user flag)
+
+# System Python packages (for system-wide tools)
+system_python_packages:
+  - name: wheel
+    version: latest
+    description: "Built-package format for Python"
+    install_method: pip            # System pip installation (--break-system-packages)
+
+  - name: setuptools
+    version: latest
+    description: "Python package development tools"
+    install_method: pip            # System pip installation
     install_method: apt            # Install via apt instead of pip
 ```
 
 **Python Package Fields:**
-- `name`: Package name (PyPI name for pip/pipx, apt package name for apt)
+- `name`: Package name (PyPI package name)
 - `version`: Version specification following pip conventions
 - `description`: Human-readable description
-- `install_method`: `"pip"` | `"pipx"` | `"apt"` (defaults to `"pipx"`)
+- `install_method`: `"pip"` | `"pipx"` (defaults to `"pipx"`)
 
 **Installation Methods:**
 - `pip`: Global installation via pip (requires --break-system-packages flag for Ubuntu 24.04+)
 - `pipx`: Isolated application installation (recommended for CLI tools, default method)
-- `apt`: Install via apt package manager (for system integration)
 
 **Important Notes:**
 - The `install_method` property is fully supported as of version 1.1.0
 - If `install_method` is not specified, `pipx` is used as the default
-- For `apt` method, use the apt package name (e.g., `python3-requests` instead of `requests`)
 - For security tools and CLI applications, `pipx` is recommended for isolation
+- For system-wide libraries, use `pip` with system Python packages
 
-### 8. PowerShell Modules Section
+### 9. PowerShell Modules Section
 
 PowerShell modules for PowerShell Core:
 
@@ -368,7 +429,7 @@ powershell_modules:
 - `version`: `"latest"` | specific version
 - `description`: Human-readable description
 
-### 9. Nix Packages Section
+### 10. Nix Packages Section
 
 Packages managed by Nix package manager (requires Nix installation):
 
@@ -406,7 +467,7 @@ nix_packages:
 - Individual packages use nixpkgs package names
 - All installations attempt system-wide installation when possible
 
-### 10. Configurations Section
+### 12. Git SSH Keys Section
 
 Post-installation configuration scripts:
 

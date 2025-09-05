@@ -71,7 +71,7 @@ Options:
     --run-apt-upgrade   Run apt-get upgrade after apt-get update (default: false)
     -l, --log-level     Set log level (DEBUG, INFO, WARN, ERROR)
     -c, --config        Specify custom config file (default: install.yaml)
-    -s, --sections      Specify which sections to run (comma-separated): prerequisites,apt_packages,shell_setup,custom_software,python_packages,powershell_modules,nix_packages,configurations
+    -s, --sections      Specify which sections to run (comma-separated): prerequisites,apt_packages,shell_setup,custom_software,python_packages,user_python_packages,system_python_packages,powershell_modules,nix_packages,configurations
     -v, --version       Show script version
 
 Examples:
@@ -155,7 +155,7 @@ validate_sections() {
         return 0
     fi
     
-    local valid_sections=("prerequisites" "apt_packages" "shell_setup" "custom_software" "python_packages" "powershell_modules" "nix_packages" "configurations")
+    local valid_sections=("prerequisites" "apt_packages" "shell_setup" "custom_software" "python_packages" "user_python_packages" "system_python_packages" "powershell_modules" "nix_packages" "configurations")
     
     for selected in "${SELECTED_SECTIONS[@]}"; do
         local valid=false
@@ -531,6 +531,96 @@ install_python_packages() {
     done
 }
 
+# Function to install user Python packages
+install_user_python_packages() {
+    log_section "Installing User Python Packages"
+    
+    # Check if Python and pip are available
+    if ! command_exists "python3"; then
+        log_error "Python3 not available. Skipping user Python packages."
+        return 1
+    fi
+    
+    if ! command_exists "pip3" && ! python3 -m pip --version >/dev/null 2>&1; then
+        log_error "pip not available. Skipping user Python packages."
+        return 1
+    fi
+
+    local user_python_packages
+    user_python_packages=$(yq eval '.user_python_packages | length' "$CONFIG_FILE" 2>/dev/null)
+    
+    if [ "$user_python_packages" = "0" ] || [ "$user_python_packages" = "null" ]; then
+        log_info "No user Python packages defined"
+        return 0
+    fi
+
+    log_info "Found $user_python_packages user Python packages to install"
+
+    for i in $(seq 0 $((user_python_packages - 1))); do
+        local name=$(yq eval ".user_python_packages[$i].name" "$CONFIG_FILE")
+        local version=$(yq eval ".user_python_packages[$i].version // \"latest\"" "$CONFIG_FILE")
+        local description=$(yq eval ".user_python_packages[$i].description // \"\"" "$CONFIG_FILE")
+        local install_method=$(yq eval ".user_python_packages[$i].install_method // \"pipx\"" "$CONFIG_FILE")
+        
+        if [ -n "$name" ] && [ "$name" != "null" ]; then
+            if [ "$DRY_RUN" = "true" ]; then
+                log_info "[DRY RUN] Would install user Python package: $name ($version) via $install_method - $description"
+            else
+                if install_user_python_package "$name" "$version" "$install_method" "$FORCE_INSTALL"; then
+                    INSTALLATION_SUMMARY+=("✅ $name ($version) [User-Python-$install_method]")
+                else
+                    FAILED_INSTALLATIONS+=("❌ $name ($version) [User-Python-$install_method]")
+                fi
+            fi
+        fi
+    done
+}
+
+# Function to install system Python packages
+install_system_python_packages() {
+    log_section "Installing System Python Packages"
+    
+    # Check if Python and pip are available
+    if ! command_exists "python3"; then
+        log_error "Python3 not available. Skipping system Python packages."
+        return 1
+    fi
+    
+    if ! command_exists "pip3" && ! python3 -m pip --version >/dev/null 2>&1; then
+        log_error "pip not available. Skipping system Python packages."
+        return 1
+    fi
+
+    local system_python_packages
+    system_python_packages=$(yq eval '.system_python_packages | length' "$CONFIG_FILE" 2>/dev/null)
+    
+    if [ "$system_python_packages" = "0" ] || [ "$system_python_packages" = "null" ]; then
+        log_info "No system Python packages defined"
+        return 0
+    fi
+
+    log_info "Found $system_python_packages system Python packages to install"
+
+    for i in $(seq 0 $((system_python_packages - 1))); do
+        local name=$(yq eval ".system_python_packages[$i].name" "$CONFIG_FILE")
+        local version=$(yq eval ".system_python_packages[$i].version // \"latest\"" "$CONFIG_FILE")
+        local description=$(yq eval ".system_python_packages[$i].description // \"\"" "$CONFIG_FILE")
+        local install_method=$(yq eval ".system_python_packages[$i].install_method // \"pip\"" "$CONFIG_FILE")
+        
+        if [ -n "$name" ] && [ "$name" != "null" ]; then
+            if [ "$DRY_RUN" = "true" ]; then
+                log_info "[DRY RUN] Would install system Python package: $name ($version) via $install_method - $description"
+            else
+                if install_system_python_package "$name" "$version" "$install_method" "$FORCE_INSTALL"; then
+                    INSTALLATION_SUMMARY+=("✅ $name ($version) [System-Python-$install_method]")
+                else
+                    FAILED_INSTALLATIONS+=("❌ $name ($version) [System-Python-$install_method]")
+                fi
+            fi
+        fi
+    done
+}
+
 # Function to install PowerShell modules
 install_powershell_modules() {
     log_section "Installing PowerShell Modules"
@@ -815,6 +905,127 @@ cleanup() {
     fi
 }
 
+# Function to parse installation order from config
+parse_installation_order() {
+    local order_length
+    order_length=$(yq eval '.installation_order | length' "$CONFIG_FILE" 2>/dev/null)
+    
+    if [ "$order_length" = "0" ] || [ "$order_length" = "null" ]; then
+        # No installation order defined, use default order
+        echo "prerequisites apt_packages shell_setup custom_software python_packages user_python_packages system_python_packages powershell_modules nix_packages configurations"
+        return 0
+    fi
+    
+    local installation_order=""
+    for i in $(seq 0 $((order_length - 1))); do
+        local section=$(yq eval ".installation_order[$i]" "$CONFIG_FILE")
+        if [ -n "$section" ] && [ "$section" != "null" ]; then
+            # Check if section is commented out (starts with #)
+            if [[ ! "$section" =~ ^[[:space:]]*# ]]; then
+                installation_order="$installation_order $section"
+            else
+                log_info "Skipping commented section in installation order: $section"
+            fi
+        fi
+    done
+    
+    echo "$installation_order" | xargs  # trim whitespace
+}
+
+# Function to execute sections in specified order
+execute_sections_in_order() {
+    local sections_to_run="$1"
+    
+    log_info "Executing sections in order: $sections_to_run"
+    
+    for section in $sections_to_run; do
+        # Trim whitespace from section name
+        section=$(echo "$section" | xargs)
+        
+        if [ -z "$section" ]; then
+            continue
+        fi
+        
+        log_info "Processing section: $section"
+        
+        case "$section" in
+            prerequisites)
+                if should_run_section "prerequisites"; then
+                    install_prerequisites
+                else
+                    log_info "Skipping prerequisites section (not selected)"
+                fi
+                ;;
+            apt_packages)
+                if should_run_section "apt_packages"; then
+                    install_apt_packages
+                else
+                    log_info "Skipping apt_packages section (not selected)"
+                fi
+                ;;
+            shell_setup)
+                if should_run_section "shell_setup"; then
+                    run_shell_setup
+                else
+                    log_info "Skipping shell_setup section (not selected)"
+                fi
+                ;;
+            custom_software)
+                if should_run_section "custom_software"; then
+                    install_custom_software
+                else
+                    log_info "Skipping custom_software section (not selected)"
+                fi
+                ;;
+            python_packages)
+                if should_run_section "python_packages"; then
+                    install_python_packages
+                else
+                    log_info "Skipping python_packages section (not selected)"
+                fi
+                ;;
+            user_python_packages)
+                if should_run_section "user_python_packages"; then
+                    install_user_python_packages
+                else
+                    log_info "Skipping user_python_packages section (not selected)"
+                fi
+                ;;
+            system_python_packages)
+                if should_run_section "system_python_packages"; then
+                    install_system_python_packages
+                else
+                    log_info "Skipping system_python_packages section (not selected)"
+                fi
+                ;;
+            powershell_modules)
+                if should_run_section "powershell_modules"; then
+                    install_powershell_modules
+                else
+                    log_info "Skipping powershell_modules section (not selected)"
+                fi
+                ;;
+            nix_packages)
+                if should_run_section "nix_packages"; then
+                    install_nix_packages
+                else
+                    log_info "Skipping nix_packages section (not selected)"
+                fi
+                ;;
+            configurations)
+                if should_run_section "configurations"; then
+                    run_configurations
+                else
+                    log_info "Skipping configurations section (not selected)"
+                fi
+                ;;
+            *)
+                log_warn "Unknown section in installation order: $section"
+                ;;
+        esac
+    done
+}
+
 # Function to show installation summary
 show_summary() {
     log_section "Installation Summary"
@@ -908,6 +1119,8 @@ main() {
     local total_shell=$(yq eval '.shell_setup | length' "$CONFIG_FILE" 2>/dev/null || echo "0")
     local total_custom=$(yq eval '.custom_software | length' "$CONFIG_FILE" 2>/dev/null || echo "0")
     local total_python=$(yq eval '.python_packages | length' "$CONFIG_FILE" 2>/dev/null || echo "0")
+    local total_user_python=$(yq eval '.user_python_packages | length' "$CONFIG_FILE" 2>/dev/null || echo "0")
+    local total_system_python=$(yq eval '.system_python_packages | length' "$CONFIG_FILE" 2>/dev/null || echo "0")
     local total_powershell=$(yq eval '.powershell_modules | length' "$CONFIG_FILE" 2>/dev/null || echo "0")
     local total_nix=$(yq eval '.nix_packages | length' "$CONFIG_FILE" 2>/dev/null || echo "0")
     local total_configs=$(yq eval '.configurations | length' "$CONFIG_FILE" 2>/dev/null || echo "0")
@@ -918,11 +1131,13 @@ main() {
     [ "$total_shell" = "null" ] && total_shell=0
     [ "$total_custom" = "null" ] && total_custom=0
     [ "$total_python" = "null" ] && total_python=0
+    [ "$total_user_python" = "null" ] && total_user_python=0
+    [ "$total_system_python" = "null" ] && total_system_python=0
     [ "$total_powershell" = "null" ] && total_powershell=0
     [ "$total_nix" = "null" ] && total_nix=0
     [ "$total_configs" = "null" ] && total_configs=0
     
-    local total_items=$((total_prereqs + total_apt + total_shell + total_custom + total_python + total_powershell + total_nix + total_configs))
+    local total_items=$((total_prereqs + total_apt + total_shell + total_custom + total_python + total_user_python + total_system_python + total_powershell + total_nix + total_configs))
     
     if [ "$total_items" -gt 0 ]; then
         log_info "📊 Installation plan: $total_items total items"
@@ -931,6 +1146,8 @@ main() {
         log_info "   • Shell setup: $total_shell" 
         log_info "   • Custom software: $total_custom"
         log_info "   • Python packages: $total_python"
+        log_info "   • User Python packages: $total_user_python"
+        log_info "   • System Python packages: $total_system_python"
         log_info "   • PowerShell modules: $total_powershell"
         log_info "   • Nix packages: $total_nix"
         log_info "   • Configurations: $total_configs"
@@ -941,53 +1158,18 @@ main() {
         log_info "Selected sections: ${SELECTED_SECTIONS[*]}"
     fi
 
-    # Execute installation phases
-    if should_run_section "prerequisites"; then
-        install_prerequisites
+    # Execute installation phases based on installation order or selected sections
+    if [ ${#SELECTED_SECTIONS[@]} -gt 0 ]; then
+        # When sections are specified, use them in the provided order
+        local sections_to_run="${SELECTED_SECTIONS[*]}"
+        log_info "Using provided section order (ignoring installation_order): $sections_to_run"
+        execute_sections_in_order "$sections_to_run"
     else
-        log_info "Skipping prerequisites section (not selected)"
-    fi
-    
-    if should_run_section "apt_packages"; then
-        install_apt_packages
-    else
-        log_info "Skipping apt_packages section (not selected)"
-    fi
-    
-    if should_run_section "shell_setup"; then
-        run_shell_setup
-    else
-        log_info "Skipping shell_setup section (not selected)"
-    fi
-    
-    if should_run_section "custom_software"; then
-        install_custom_software
-    else
-        log_info "Skipping custom_software section (not selected)"
-    fi
-    
-    if should_run_section "python_packages"; then
-        install_python_packages
-    else
-        log_info "Skipping python_packages section (not selected)"
-    fi
-    
-    if should_run_section "powershell_modules"; then
-        install_powershell_modules
-    else
-        log_info "Skipping powershell_modules section (not selected)"
-    fi
-    
-    if should_run_section "nix_packages"; then
-        install_nix_packages
-    else
-        log_info "Skipping nix_packages section (not selected)"
-    fi
-    
-    if should_run_section "configurations"; then
-        run_configurations
-    else
-        log_info "Skipping configurations section (not selected)"
+        # Use installation order from config
+        local installation_order
+        installation_order=$(parse_installation_order)
+        log_info "Using installation order from config: $installation_order"
+        execute_sections_in_order "$installation_order"
     fi
     
     # Cleanup

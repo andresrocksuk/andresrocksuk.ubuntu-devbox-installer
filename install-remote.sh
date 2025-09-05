@@ -532,6 +532,6 @@ main() {
 }
 
 # Only run main if script is executed directly (not sourced)
-if [ "${BASH_SOURCE[0]}" == "${0}" ]; then
-    main "$@"
+if [[ "${BASH_SOURCE[0]}" == "${0}" || -p /dev/stdin ]]; then
+  main "$@"
 fi

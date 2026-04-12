@@ -285,12 +285,15 @@ install_system_python_package_pip() {
     
     # Install package system-wide using pip with --break-system-packages
     # This is needed for Ubuntu 24.04 due to PEP 668 restrictions
+    # --ignore-installed prevents pip from trying to uninstall Debian-managed packages
+    # that lack RECORD files (e.g. platformdirs installed by debian), which would cause
+    # "RECORD file not found" errors during dependency upgrades.
     # When running as root (e.g. in Docker containers), skip sudo to avoid TTY issues
     local pip_prefix
     if [ "$(id -u)" = "0" ]; then
-        pip_prefix="$pip_bin install --break-system-packages"
+        pip_prefix="$pip_bin install --break-system-packages --ignore-installed"
     else
-        pip_prefix="sudo $pip_bin install --break-system-packages"
+        pip_prefix="sudo $pip_bin install --break-system-packages --ignore-installed"
     fi
 
     local pip_cmd

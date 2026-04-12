@@ -1,0 +1,1 @@
+curl -sSL "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/refs/heads/feat/docker-install-support/install-remote.sh" | bash -s -- --branch "feat/docker-install-support" --no-cleanup

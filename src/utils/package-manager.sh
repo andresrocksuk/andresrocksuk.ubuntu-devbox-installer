@@ -262,12 +262,21 @@ install_system_python_package_pip() {
         return 1
     fi
     
-    # Check if pip is installed
-    if ! command_exists "pip3" && ! python3 -m pip --version >/dev/null 2>&1; then
-        log_install_failure "$package" "pip is not installed"
+    # Determine pip binary to use
+    # Prefer pip3 (direct system pip) over python3 -m pip to avoid PATH issues
+    # where alternative Python installations (Homebrew, Nix) can shadow python3
+    local pip_bin=""
+    if command_exists "pip3"; then
+        pip_bin="pip3"
+    elif python3 -m pip --version >/dev/null 2>&1; then
+        pip_bin="python3 -m pip"
+    else
+        log_install_failure "$package" "pip is not installed (tried pip3 and python3 -m pip)"
         return 1
     fi
-    
+
+    log_info "Using pip binary: $pip_bin"
+
     # Check if already installed with correct version (system-wide)
     if [ "$force_install" != "true" ] && check_python_package_version "$package" "$version"; then
         log_install_skip "$package" "already installed with compatible version (system)"
@@ -279,9 +288,9 @@ install_system_python_package_pip() {
     # When running as root (e.g. in Docker containers), skip sudo to avoid TTY issues
     local pip_prefix
     if [ "$(id -u)" = "0" ]; then
-        pip_prefix="python3 -m pip install --break-system-packages"
+        pip_prefix="$pip_bin install --break-system-packages"
     else
-        pip_prefix="sudo python3 -m pip install --break-system-packages"
+        pip_prefix="sudo $pip_bin install --break-system-packages"
     fi
 
     local pip_cmd
@@ -290,12 +299,14 @@ install_system_python_package_pip() {
     else
         pip_cmd="$pip_prefix $package"
     fi
-    
+
+    log_info "Running: $pip_cmd"
+
     if log_command "$pip_cmd"; then
         log_install_success "$package"
         return 0
     else
-        log_install_failure "$package" "pip system-wide installation failed"
+        log_install_failure "$package" "pip system-wide installation failed (command: $pip_cmd)"
         return 1
     fi
 }

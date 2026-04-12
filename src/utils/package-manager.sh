@@ -29,15 +29,79 @@ setup_noninteractive_apt() {
     export DEBIAN_PRIORITY=critical
 }
 
+# Internal helper: wait for apt/dpkg locks to be released before running apt commands.
+# Waits up to the specified timeout (default 120s), then force-kills holders as a last resort.
+_wait_for_apt_locks() {
+    local timeout="${1:-120}"
+    local lock_files=(/var/lib/dpkg/lock /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock /var/cache/apt/archives/lock)
+    local start_time
+    start_time=$(date +%s)
+
+    # Quick check — if nothing is locked we return immediately
+    local any_locked=false
+    for lock_file in "${lock_files[@]}"; do
+        if sudo fuser "$lock_file" >/dev/null 2>&1; then
+            any_locked=true
+            break
+        fi
+    done
+    if [ "$any_locked" = false ]; then
+        return 0
+    fi
+
+    log_info "Waiting for apt/dpkg lock(s) to be released (timeout: ${timeout}s)..."
+
+    while :; do
+        any_locked=false
+        for lock_file in "${lock_files[@]}"; do
+            if sudo fuser "$lock_file" >/dev/null 2>&1; then
+                any_locked=true
+            fi
+        done
+        if [ "$any_locked" = false ]; then
+            log_info "apt/dpkg locks released"
+            return 0
+        fi
+
+        local now
+        now=$(date +%s)
+        local elapsed=$((now - start_time))
+        if [ "$elapsed" -ge "$timeout" ]; then
+            log_warn "Timeout waiting for apt/dpkg lock(s) after ${timeout}s — force-releasing..."
+            for lock_file in "${lock_files[@]}"; do
+                if sudo fuser "$lock_file" >/dev/null 2>&1; then
+                    log_warn "Lock file: $lock_file"
+                    local pids
+                    pids=$(sudo fuser "$lock_file" 2>/dev/null || true)
+                    for pid in $pids; do
+                        log_warn "Killing process $pid holding $lock_file"
+                        sudo kill -9 "$pid" 2>/dev/null || true
+                    done
+                    if [ -f "$lock_file" ]; then
+                        log_warn "Removing lock file: $lock_file"
+                        sudo rm -f "$lock_file"
+                    fi
+                fi
+            done
+            # Reconfigure dpkg in case it was interrupted
+            sudo dpkg --configure -a 2>/dev/null || true
+            return 0
+        fi
+        sleep 2
+    done
+}
+
 # Function to run apt-get update with proper settings
 safe_apt_update() {
     setup_noninteractive_apt
+    _wait_for_apt_locks 120
     sudo -E apt-get update -qq < /dev/null
 }
 
 # Function to run apt-get install with proper settings
 safe_apt_install() {
     setup_noninteractive_apt
+    _wait_for_apt_locks 120
     sudo -E apt-get install -y -qq -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" "$@" < /dev/null
 }
 
@@ -45,55 +109,8 @@ safe_apt_install() {
 update_package_lists() {
     log_info "Updating package lists..."
 
-    # Wait for apt/dpkg locks to be released, up to 1 minute
-    local lock_files=(/var/lib/dpkg/lock /var/lib/apt/lists/lock /var/cache/apt/archives/lock)
-    local start_time=$(date +%s)
-    local timeout=60
-    local locked=false
-    for lock_file in "${lock_files[@]}"; do
-        if sudo fuser "$lock_file" >/dev/null 2>&1; then
-            locked=true
-        fi
-    done
-    if [ "$locked" = true ]; then
-        log_info "Waiting for apt/dpkg lock(s) to be released (timeout: ${timeout}s)..."
-        while :; do
-            local any_locked=false
-            for lock_file in "${lock_files[@]}"; do
-                if sudo fuser "$lock_file" >/dev/null 2>&1; then
-                    any_locked=true
-                fi
-            done
-            if [ "$any_locked" = false ]; then
-                break
-            fi
-            local now=$(date +%s)
-            local elapsed=$((now - start_time))
-            if [ $elapsed -ge $timeout ]; then
-                log_error "Timeout waiting for apt/dpkg lock(s) after ${timeout}s. Listing lock holders:"
-                for lock_file in "${lock_files[@]}"; do
-                    if sudo fuser "$lock_file" >/dev/null 2>&1; then
-                        log_warn "Lock file: $lock_file"
-                        sudo fuser -v "$lock_file" 2>&1 | while read -r line; do log_warn "$line"; done
-                        sudo lsof "$lock_file" 2>/dev/null | while read -r line; do log_warn "$line"; done
-                        # Attempt to forcibly kill the process holding the lock
-                        local pids=$(sudo fuser "$lock_file" 2>/dev/null)
-                        for pid in $pids; do
-                            log_error "Killing process $pid holding $lock_file"
-                            sudo kill -9 $pid
-                        done
-                        # Remove the lock file if it still exists
-                        if [ -f "$lock_file" ]; then
-                            log_warn "Removing lock file: $lock_file"
-                            sudo rm -f "$lock_file"
-                        fi
-                    fi
-                done
-                break
-            fi
-            sleep 2
-        done
-    fi
+    # Reuse the shared lock-waiting helper (120s timeout, force-kill on expiry)
+    _wait_for_apt_locks 120
 
     if log_command "safe_apt_update"; then
         log_success "Package lists updated successfully"

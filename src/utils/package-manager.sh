@@ -274,14 +274,21 @@ install_system_python_package_pip() {
         return 0
     fi
     
-    # Install package system-wide using sudo pip with --break-system-packages
+    # Install package system-wide using pip with --break-system-packages
     # This is needed for Ubuntu 24.04 due to PEP 668 restrictions
-    local pip_cmd="sudo python3 -m pip install --break-system-packages"
-    
-    if [ "$version" != "latest" ]; then
-        pip_cmd="$pip_cmd $package==$version"
+    # When running as root (e.g. in Docker containers), skip sudo to avoid TTY issues
+    local pip_prefix
+    if [ "$(id -u)" = "0" ]; then
+        pip_prefix="python3 -m pip install --break-system-packages"
     else
-        pip_cmd="$pip_cmd $package"
+        pip_prefix="sudo python3 -m pip install --break-system-packages"
+    fi
+
+    local pip_cmd
+    if [ "$version" != "latest" ]; then
+        pip_cmd="$pip_prefix $package==$version"
+    else
+        pip_cmd="$pip_prefix $package"
     fi
     
     if log_command "$pip_cmd"; then
@@ -376,14 +383,21 @@ install_python_package_pip() {
         return 0
     fi
     
-    # Install package system-wide using sudo pip with --break-system-packages
+    # Install package system-wide using pip with --break-system-packages
     # This is required for Ubuntu 24.04 due to PEP 668 restrictions
-    local pip_cmd="sudo python3 -m pip install --break-system-packages"
-    
-    if [ "$version" != "latest" ]; then
-        pip_cmd="$pip_cmd $package==$version"
+    # When running as root (e.g. in Docker containers), skip sudo to avoid TTY issues
+    local pip_prefix
+    if [ "$(id -u)" = "0" ]; then
+        pip_prefix="python3 -m pip install --break-system-packages"
     else
-        pip_cmd="$pip_cmd $package"
+        pip_prefix="sudo python3 -m pip install --break-system-packages"
+    fi
+
+    local pip_cmd
+    if [ "$version" != "latest" ]; then
+        pip_cmd="$pip_prefix $package==$version"
+    else
+        pip_cmd="$pip_prefix $package"
     fi
     
     if log_command "$pip_cmd"; then

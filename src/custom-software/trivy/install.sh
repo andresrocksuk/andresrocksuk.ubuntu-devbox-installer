@@ -48,7 +48,7 @@ fi
 
 # Tool information
 TOOL_NAME="trivy"
-TOOL_VERSION="v0.48.3"
+TOOL_VERSION="v0.69.3"
 TOOL_DESCRIPTION="Vulnerability scanner for containers and code"
 
 # Installation function

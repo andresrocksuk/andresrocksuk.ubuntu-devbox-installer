@@ -15,6 +15,11 @@ else
     exit 1
 fi
 
+# Source environment detector
+if [ -f "$UTILS_DIR/environment-detector.sh" ]; then
+    source "$UTILS_DIR/environment-detector.sh"
+fi
+
 # Enable error handling
 set -e
 
@@ -29,14 +34,21 @@ install_docker_compose() {
     fi
     
     # Check for WSL Docker Desktop integration scenario
-    local docker_path
-    docker_path=$(command -v docker 2>/dev/null || echo "")
-    if [[ "$docker_path" == *"/mnt/c/"* ]] || [[ "$docker_path" == *"Program Files"* ]]; then
+    if command -v is_docker_desktop_integration >/dev/null 2>&1 && is_docker_desktop_integration; then
         log_info "Docker Desktop WSL integration detected"
         log_info "Docker Compose functionality is typically available through Docker Desktop"
         log_info "To verify: try running 'docker compose version' in your terminal"
-        log_info "If Docker Desktop integration is working properly, docker-compose should be available"
         return 0
+    else
+        # Fallback inline check if environment-detector not available
+        local docker_path
+        docker_path=$(command -v docker 2>/dev/null || echo "")
+        if [[ "$docker_path" == *"/mnt/c/"* ]] || [[ "$docker_path" == *"Program Files"* ]]; then
+            log_info "Docker Desktop WSL integration detected"
+            log_info "Docker Compose functionality is typically available through Docker Desktop"
+            log_info "To verify: try running 'docker compose version' in your terminal"
+            return 0
+        fi
     fi
     
     # Check if docker-compose is already installed

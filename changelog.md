@@ -2,6 +2,39 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Completed] - 2026-04-13
+
+### Executive Summary
+
+#### Multi-Environment Docker Support: WSL, Native Linux, and Container Detection
+
+Added centralized environment detection and updated Docker installation to properly configure the Docker Engine across three execution contexts: WSL, native Linux (VM/bare metal), and containers (Docker-in-Docker). Previously, Docker was only configured for WSL environments, causing permission errors (`docker.sock` access denied) when the installer ran on native Ubuntu VMs such as Azure Image Builder.
+
+**Key Improvements:**
+
+- ✅ **Centralized Environment Detector**: New `src/utils/environment-detector.sh` utility that detects WSL, native Linux, and container environments with caching and systemd availability checks
+- ✅ **Native Linux Docker Configuration**: On VMs/bare metal, Docker is now properly enabled and started via systemd with `containerd` and correct socket permissions (`root:docker` ownership, `660` mode)
+- ✅ **Container (DinD) Support**: Detects container environments and starts `dockerd` manually when systemd is unavailable
+- ✅ **WSL Improvements**: WSL2 systemd detection with graceful fallback to background `dockerd` if systemd is not available
+- ✅ **Docker Socket Permissions**: Explicit `chown root:docker` and `chmod 660` on `/var/run/docker.sock` ensures group-based access works immediately
+- ✅ **Docker Group Management**: Ensures the `docker` group exists before adding the user, with clear guidance on re-login requirements
+- ✅ **Improved Daemon Startup**: Background `dockerd` now polls for the socket (up to 15s) instead of a fixed `sleep 5`
+- ✅ **Docker Compose Updated**: `docker-compose/install.sh` now uses the centralized environment detector for Desktop integration checks
+
+**Impact:**
+- Azure Image Builder VMs can now pull and run Docker containers after installation without manual intervention
+- Environment detection is reusable by any future installation script via `source environment-detector.sh`
+- Existing WSL behavior is preserved with no breaking changes
+
+### Technical Summary
+
+#### Files Changed
+- **New**: `src/utils/environment-detector.sh` — centralized WSL/native/container detection with `has_systemd()` and `is_docker_desktop_integration()` helpers
+- **Modified**: `src/custom-software/docker/install.sh` — replaced monolithic service start with `configure_docker_service()` dispatching to `configure_docker_native()`, `configure_docker_wsl()`, and `configure_docker_container()`
+- **Modified**: `src/custom-software/docker-compose/install.sh` — sources `environment-detector.sh` and uses `is_docker_desktop_integration()` for Desktop detection
+
+---
+
 ## [Completed] - 2025-09-06
 
 ### Executive Summary

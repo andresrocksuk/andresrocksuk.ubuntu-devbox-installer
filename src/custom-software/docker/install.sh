@@ -2,6 +2,10 @@
 
 # Docker Installation Script
 # This script installs Docker Engine from the official repository
+# Supports three execution contexts:
+#   - WSL: Docker Desktop integration or native Docker in WSL
+#   - Native Linux (VM/bare metal): Full Docker Engine with systemd service
+#   - Container (Docker-in-Docker): Docker Engine without systemd
 
 set -e
 
@@ -21,6 +25,11 @@ fi
 # Source package manager utilities
 if [ -f "$UTILS_DIR/package-manager.sh" ]; then
     source "$UTILS_DIR/package-manager.sh"
+fi
+
+# Source environment detector
+if [ -f "$UTILS_DIR/environment-detector.sh" ]; then
+    source "$UTILS_DIR/environment-detector.sh"
 fi
 
 # Source utilities - either from framework or standalone fallback
@@ -71,16 +80,44 @@ else
     fi
 fi
 
-# Function to detect WSL environment
-is_wsl_environment() {
-    # Check for WSL indicators
-    [ -f /proc/version ] && grep -q "Microsoft\|WSL" /proc/version
-}
+# Fallback environment detection if environment-detector.sh was not sourced
+if ! command -v get_environment_type >/dev/null 2>&1; then
+    is_wsl_environment() {
+        [ -f /proc/version ] && grep -qi "Microsoft\|WSL" /proc/version 2>/dev/null
+    }
+    is_container_environment() {
+        [ -f /.dockerenv ] || ([ -f /proc/1/cgroup ] && grep -qi "docker\|containerd\|lxc" /proc/1/cgroup 2>/dev/null)
+    }
+    is_native_environment() {
+        ! is_wsl_environment && ! is_container_environment
+    }
+    has_systemd() {
+        command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ]
+    }
+    is_docker_desktop_integration() {
+        is_wsl_environment || return 1
+        local dp
+        dp=$(command -v docker 2>/dev/null || echo "")
+        [[ "$dp" == *"/mnt/c/"* ]] || [[ "$dp" == *"Program Files"* ]]
+    }
+    get_environment_type() {
+        if is_wsl_environment; then echo "wsl"
+        elif is_container_environment; then echo "container"
+        else echo "native"; fi
+    }
+fi
 
 # Main installation function
 install_docker() {
-    log_info "Installing $SOFTWARE_DESCRIPTION..."
-    
+    local env_type
+    env_type=$(get_environment_type)
+    log_info "Installing $SOFTWARE_DESCRIPTION... (environment: $env_type)"
+
+    # Log environment details if detector is available
+    if command -v log_environment_info >/dev/null 2>&1; then
+        log_environment_info
+    fi
+
     # First, check for WSL Docker Desktop integration scenario before standard checks
     if command_exists "$COMMAND_NAME"; then
         local current_version
@@ -94,16 +131,11 @@ install_docker() {
         current_version=$(echo "$current_version" | tr -d '[:space:]')
         
         # Check for WSL Docker Desktop integration scenario
-        if [[ "$current_version" == *"UNKNOWN"* ]] && is_wsl_environment; then
-            # Check if this is Docker Desktop WSL integration
-            local docker_path
-            docker_path=$(command -v docker 2>/dev/null || echo "")
-            if [[ "$docker_path" == *"/mnt/c/"* ]] || [[ "$docker_path" == *"Program Files"* ]]; then
-                log_info "Docker is available through Docker Desktop WSL integration"
-                log_info "This provides Docker functionality but is not a native WSL installation"
-                log_info "For native Docker installation, please ensure Docker Desktop WSL integration is disabled"
-                return 0
-            fi
+        if [[ "$current_version" == *"UNKNOWN"* ]] && is_docker_desktop_integration; then
+            log_info "Docker is available through Docker Desktop WSL integration"
+            log_info "This provides Docker functionality but is not a native WSL installation"
+            log_info "For native Docker installation, please ensure Docker Desktop WSL integration is disabled"
+            return 0
         fi
         
         # If we have a valid version, log and return
@@ -199,32 +231,8 @@ install_docker() {
         return 1
     fi
     
-    # Start Docker service (with WSL consideration)
-    log_info "Starting Docker service..."
-    if command -v systemctl >/dev/null 2>&1; then
-        sudo systemctl start docker || log_info "Failed to start docker service via systemctl"
-        sudo systemctl enable docker || log_info "Failed to enable docker service via systemctl"
-    else
-        log_info "Systemctl not available (normal in WSL)"
-    fi
-    
-    # Add current user to docker group
-    log_info "Adding user to docker group..."
-    if ! sudo usermod -aG docker "$USER"; then
-        log_warn "Failed to add user to docker group"
-    fi
-    
-    # Start dockerd if not running (WSL specific)
-    if ! pgrep dockerd >/dev/null 2>&1; then
-        log_info "Starting dockerd daemon..."
-        sudo dockerd > /dev/null 2>&1 &
-        sleep 5
-        if pgrep dockerd >/dev/null 2>&1; then
-            log_debug "dockerd started in background"
-        else
-            log_warn "Failed to start dockerd daemon"
-        fi
-    fi
+    # Configure Docker service based on environment type
+    configure_docker_service "$env_type"
     
     # Verify installation using framework if available
     if [ "$FRAMEWORK_AVAILABLE" = "true" ] && command -v verify_installation >/dev/null 2>&1; then
@@ -234,7 +242,7 @@ install_docker() {
             log_installation_result "$SOFTWARE_NAME" "success" "$installed_version"
             
             # Test Docker installation
-            test_docker_installation
+            test_docker_installation "$env_type"
             return 0
         else
             log_installation_result "$SOFTWARE_NAME" "failure" "" "verification failed"
@@ -248,7 +256,7 @@ install_docker() {
             log_success "$SOFTWARE_NAME installed successfully (version: $installed_version)"
             
             # Test Docker installation
-            test_docker_installation
+            test_docker_installation "$env_type"
             return 0
         else
             log_error "$SOFTWARE_NAME installation verification failed"
@@ -257,14 +265,171 @@ install_docker() {
     fi
 }
 
+# Configure Docker service based on detected environment
+configure_docker_service() {
+    local env_type="${1:-native}"
+
+    # Ensure the docker group exists
+    if ! getent group docker >/dev/null 2>&1; then
+        log_info "Creating docker group..."
+        sudo groupadd docker || log_warn "Failed to create docker group"
+    fi
+
+    # Add current user to docker group
+    log_info "Adding user '$USER' to docker group..."
+    if ! sudo usermod -aG docker "$USER"; then
+        log_warn "Failed to add user to docker group"
+    fi
+
+    case "$env_type" in
+        native)
+            configure_docker_native
+            ;;
+        wsl)
+            configure_docker_wsl
+            ;;
+        container)
+            configure_docker_container
+            ;;
+        *)
+            log_warn "Unknown environment type: $env_type, falling back to native configuration"
+            configure_docker_native
+            ;;
+    esac
+}
+
+# Configure Docker on native Linux (VM or bare metal)
+configure_docker_native() {
+    log_info "Configuring Docker for native Linux environment..."
+
+    if has_systemd; then
+        log_info "Enabling and starting Docker via systemd..."
+        if ! sudo systemctl enable docker; then
+            log_warn "Failed to enable docker service"
+        fi
+        if ! sudo systemctl enable containerd; then
+            log_warn "Failed to enable containerd service"
+        fi
+        if ! sudo systemctl start docker; then
+            log_error "Failed to start docker service via systemctl"
+            return 1
+        fi
+        log_success "Docker service started and enabled via systemd"
+    else
+        log_warn "Systemd not available on native Linux; starting dockerd manually"
+        start_dockerd_background
+    fi
+
+    # Ensure docker socket has correct permissions
+    ensure_docker_socket_permissions
+}
+
+# Configure Docker in WSL environment
+configure_docker_wsl() {
+    log_info "Configuring Docker for WSL environment..."
+
+    # Try systemd first (WSL2 with systemd support)
+    if has_systemd; then
+        log_info "WSL2 with systemd detected, using systemd for Docker..."
+        if ! sudo systemctl enable docker; then
+            log_warn "Failed to enable docker service in WSL"
+        fi
+        if ! sudo systemctl start docker; then
+            log_warn "Failed to start docker via systemctl in WSL, falling back to manual start"
+            start_dockerd_background
+        else
+            log_success "Docker service started via systemd in WSL"
+        fi
+    else
+        log_info "Systemd not available in WSL, starting dockerd manually..."
+        start_dockerd_background
+    fi
+
+    ensure_docker_socket_permissions
+}
+
+# Configure Docker inside a container (Docker-in-Docker)
+configure_docker_container() {
+    log_info "Configuring Docker for container environment (Docker-in-Docker)..."
+
+    # In containers, systemd is typically not available
+    if has_systemd; then
+        log_info "Systemd available in container, using it for Docker..."
+        sudo systemctl start docker || log_warn "Failed to start docker via systemctl in container"
+    else
+        log_info "Starting dockerd manually in container..."
+        start_dockerd_background
+    fi
+
+    ensure_docker_socket_permissions
+}
+
+# Start dockerd as a background process (fallback when systemd is not available)
+start_dockerd_background() {
+    if pgrep -x dockerd >/dev/null 2>&1; then
+        log_info "dockerd is already running"
+        return 0
+    fi
+
+    log_info "Starting dockerd daemon in background..."
+    sudo dockerd > /dev/null 2>&1 &
+    local dockerd_pid=$!
+
+    # Wait for Docker socket to become available (up to 15 seconds)
+    local max_wait=15
+    local waited=0
+    while [ "$waited" -lt "$max_wait" ]; do
+        if [ -S /var/run/docker.sock ]; then
+            log_debug "Docker socket available after ${waited}s"
+            break
+        fi
+        sleep 1
+        waited=$((waited + 1))
+    done
+
+    if pgrep -x dockerd >/dev/null 2>&1; then
+        log_success "dockerd started in background (PID: $dockerd_pid)"
+    else
+        log_warn "dockerd may have failed to start"
+    fi
+}
+
+# Ensure the Docker socket has correct group ownership and permissions
+ensure_docker_socket_permissions() {
+    local docker_sock="/var/run/docker.sock"
+    if [ -S "$docker_sock" ]; then
+        log_info "Ensuring Docker socket permissions..."
+        # Set group ownership to docker
+        sudo chown root:docker "$docker_sock" || log_warn "Failed to set docker socket group ownership"
+        # Ensure group read/write access (srw-rw----)
+        sudo chmod 660 "$docker_sock" || log_warn "Failed to set docker socket permissions"
+        log_debug "Docker socket permissions: $(ls -la "$docker_sock")"
+    else
+        log_debug "Docker socket not found at $docker_sock (may appear after daemon starts)"
+    fi
+}
+
 # Helper function to test Docker installation
 test_docker_installation() {
-    log_info "Testing Docker..."
+    local env_type="${1:-native}"
+    log_info "Testing Docker (environment: $env_type)..."
+
+    # Use sudo for initial test; group membership requires new login session
     if sudo docker run --rm hello-world >/dev/null 2>&1; then
-        log_success "Docker test successful"
+        log_success "Docker test successful (via sudo)"
     else
-        log_info "Docker test failed, but installation appears successful"
-        log_info "Note: You may need to restart your shell or run 'newgrp docker'"
+        log_warn "Docker test with sudo failed"
+        log_info "This may be normal during image building; Docker will work after reboot/re-login"
+    fi
+
+    # Check if non-root access works (may fail if group change requires re-login)
+    if docker info >/dev/null 2>&1; then
+        log_success "Docker accessible without sudo"
+    else
+        log_info "Docker requires re-login for non-root access (user added to docker group)"
+        if [ "$env_type" = "native" ]; then
+            log_info "Run 'newgrp docker' or log out and back in to use Docker without sudo"
+        fi
     fi
 }
 

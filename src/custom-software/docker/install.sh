@@ -361,9 +361,11 @@ configure_docker_container() {
     log_info "Docker-in-Docker configured. dockerd will auto-start on interactive shell login."
 }
 
-# Install a shell profile script that auto-starts dockerd in interactive
-# container sessions.  Works via /etc/profile.d (login shells) and
-# /etc/bash.bashrc (non-login interactive shells such as "docker run -it bash").
+# Install a shell profile script that auto-starts dockerd in container
+# sessions.  Activated via:
+#   - /etc/profile.d  (login shells)
+#   - /etc/bash.bashrc (interactive non-login shells, e.g. "docker run -it bash")
+#   - BASH_ENV         (non-interactive shells, e.g. "docker run bash -c '...'")
 install_docker_autostart() {
     local autostart_path="/etc/profile.d/docker-autostart.sh"
 
@@ -372,16 +374,14 @@ install_docker_autostart() {
     cat << 'AUTOSTART_EOF' | sudo tee "$autostart_path" > /dev/null
 #!/bin/bash
 # Auto-start Docker daemon for Docker-in-Docker containers.
-# Sourced by interactive shells; does nothing if Docker is not installed.
-
-# Guard: only for interactive shells
-[[ $- != *i* ]] && return
+# Sourced automatically via profile.d, bashrc, or BASH_ENV.
+# Does nothing if Docker is not installed or if dockerd is already running.
 
 # Guard: only if dockerd binary exists
-command -v dockerd >/dev/null 2>&1 || return
+command -v dockerd >/dev/null 2>&1 || return 0 2>/dev/null || true
 
 # Guard: skip if dockerd is already running
-pgrep -x dockerd >/dev/null 2>&1 && return
+pgrep -x dockerd >/dev/null 2>&1 && return 0 2>/dev/null && true
 
 # Start dockerd (use sudo when not root)
 echo "[docker-autostart] Starting Docker daemon..."
@@ -398,7 +398,7 @@ while [ "$_docker_wait" -gt 0 ]; do
     if docker info >/dev/null 2>&1; then
         echo "[docker-autostart] Docker daemon is ready."
         unset _docker_wait
-        return
+        return 0 2>/dev/null || true
     fi
     sleep 1
     _docker_wait=$((_docker_wait - 1))
@@ -419,6 +419,16 @@ AUTOSTART_EOF
         printf '\n# Docker-in-Docker: auto-start dockerd for interactive sessions\n[ -f /etc/profile.d/docker-autostart.sh ] && . /etc/profile.d/docker-autostart.sh\n' \
             | sudo tee -a /etc/bash.bashrc > /dev/null
     fi
+
+    # Set BASH_ENV so that non-interactive shells (e.g. "docker run image bash -c '...'")
+    # also trigger the autostart. BASH_ENV is sourced by bash before running -c commands.
+    if ! grep -q "BASH_ENV.*docker-autostart" /etc/environment 2>/dev/null; then
+        log_info "Setting BASH_ENV in /etc/environment for non-interactive shell support..."
+        printf 'BASH_ENV=/etc/profile.d/docker-autostart.sh\n' \
+            | sudo tee -a /etc/environment > /dev/null
+    fi
+    # Also export for the current build layer (persisted via Dockerfile ENV or inherited)
+    export BASH_ENV=/etc/profile.d/docker-autostart.sh
 
     log_success "Docker autostart installed at $autostart_path"
 }

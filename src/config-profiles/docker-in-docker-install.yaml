@@ -1,0 +1,80 @@
+# WSL Installation Configuration
+# This file defines all software to be installed in the WSL environment
+
+# Metadata
+metadata:
+  name: "WSL Development Environment"
+  description: "Docker setup for WSL Ubuntu 24.04 LTS"
+  version: "1.0.0"
+  author: "andresrocksmx"
+  support_url: "https://github.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/issues"
+
+# Prerequisites that must be installed before other software
+prerequisites:
+  - curl
+  - wget
+  - yq
+  - software-properties-common
+  - apt-transport-https
+  - ca-certificates
+  - gnupg
+  - lsb-release
+
+# APT packages to install
+apt_packages:
+  - name: zsh
+    version: latest
+    description: "Z shell"
+
+  - name: git
+    version: latest
+    description: "Version control system"
+
+  - name: jq
+    version: latest
+    description: "Command-line JSON processor"
+
+  - name: wget
+    version: latest
+    description: "Network downloader"
+
+# Custom software installations (not available via apt)
+custom_software:
+  - name: docker
+    description: "Containerization platform"
+    script: custom-software/docker/install.sh
+    version_command: docker
+    version_flag: --version
+
+  - name: docker-compose
+    description: "Tool for defining multi-container applications"
+    script: custom-software/docker-compose/install.sh
+    version_command: docker-compose
+    version_flag: --version
+    depends_on: [docker]
+
+# Installation order (optional - defines dependency order)
+installation_order:
+  - prerequisites
+  - apt_packages
+  - custom_software
+
+# Settings
+settings:
+  # Continue installation even if individual packages fail
+  continue_on_error: true
+
+  # Update package lists before installation
+  update_packages: true
+
+  # Clean up after installation
+  cleanup_after_install: true
+
+  # Log level (DEBUG, INFO, WARN, ERROR)
+  log_level: INFO
+
+  # Backup existing configurations before overwriting
+  backup_configs: true
+
+  # Maximum retries for failed installations
+  max_retries: 2

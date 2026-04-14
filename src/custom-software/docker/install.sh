@@ -352,16 +352,53 @@ configure_docker_wsl() {
 configure_docker_container() {
     log_info "Configuring Docker for container environment (Docker-in-Docker)..."
 
-    # In containers, systemd is typically not available
-    if has_systemd; then
-        log_info "Systemd available in container, using it for Docker..."
-        sudo systemctl start docker || log_warn "Failed to start docker via systemctl in container"
-    else
-        log_info "Starting dockerd manually in container..."
-        start_dockerd_background
-    fi
+    # During image build, starting dockerd won't persist across layers.
+    # Instead, install an entrypoint wrapper that starts dockerd at container runtime.
+    install_dockerd_entrypoint
 
-    ensure_docker_socket_permissions
+    log_info "Docker-in-Docker configured. dockerd will start via entrypoint at container runtime."
+}
+
+# Install a dockerd entrypoint script for Docker-in-Docker containers.
+# This script is meant to be used as ENTRYPOINT in a Dockerfile so that
+# the Docker daemon starts automatically when the container launches.
+install_dockerd_entrypoint() {
+    local entrypoint_path="/usr/local/bin/dockerd-entrypoint.sh"
+
+    log_info "Installing dockerd entrypoint script at $entrypoint_path..."
+
+    cat << 'ENTRYPOINT_EOF' | sudo tee "$entrypoint_path" > /dev/null
+#!/bin/bash
+set -e
+
+# Start the Docker daemon if it is not already running.
+if ! pgrep -x dockerd > /dev/null 2>&1; then
+    echo "[dockerd-entrypoint] Starting dockerd..."
+    sudo dockerd > /var/log/dockerd.log 2>&1 &
+
+    # Wait for the Docker socket (up to 30 seconds).
+    timeout=30
+    while [ "$timeout" -gt 0 ]; do
+        if [ -S /var/run/docker.sock ]; then
+            break
+        fi
+        sleep 1
+        timeout=$((timeout - 1))
+    done
+
+    if [ -S /var/run/docker.sock ]; then
+        echo "[dockerd-entrypoint] dockerd is ready."
+    else
+        echo "[dockerd-entrypoint] WARNING: dockerd did not start within 30s. Check /var/log/dockerd.log" >&2
+    fi
+fi
+
+# Execute the CMD passed to the container.
+exec "$@"
+ENTRYPOINT_EOF
+
+    sudo chmod +x "$entrypoint_path"
+    log_success "dockerd entrypoint installed at $entrypoint_path"
 }
 
 # Start dockerd as a background process (fallback when systemd is not available)
@@ -413,6 +450,15 @@ ensure_docker_socket_permissions() {
 test_docker_installation() {
     local env_type="${1:-native}"
     log_info "Testing Docker (environment: $env_type)..."
+
+    # In container environments (Docker-in-Docker), the daemon is not running
+    # during image build. Skip runtime tests — Docker will work via the
+    # dockerd-entrypoint.sh at container start time.
+    if [ "$env_type" = "container" ]; then
+        log_info "Skipping Docker runtime test in container build context"
+        log_info "Docker will be available at container runtime via dockerd-entrypoint.sh"
+        return 0
+    fi
 
     # Use sudo for initial test; group membership requires new login session
     if sudo docker run --rm hello-world >/dev/null 2>&1; then

@@ -353,52 +353,74 @@ configure_docker_container() {
     log_info "Configuring Docker for container environment (Docker-in-Docker)..."
 
     # During image build, starting dockerd won't persist across layers.
-    # Instead, install an entrypoint wrapper that starts dockerd at container runtime.
-    install_dockerd_entrypoint
+    # Install a shell autostart script that starts dockerd when an interactive
+    # session opens. This avoids requiring a specific ENTRYPOINT and gracefully
+    # does nothing if Docker was not installed.
+    install_docker_autostart
 
-    log_info "Docker-in-Docker configured. dockerd will start via entrypoint at container runtime."
+    log_info "Docker-in-Docker configured. dockerd will auto-start on interactive shell login."
 }
 
-# Install a dockerd entrypoint script for Docker-in-Docker containers.
-# This script is meant to be used as ENTRYPOINT in a Dockerfile so that
-# the Docker daemon starts automatically when the container launches.
-install_dockerd_entrypoint() {
-    local entrypoint_path="/usr/local/bin/dockerd-entrypoint.sh"
+# Install a shell profile script that auto-starts dockerd in interactive
+# container sessions.  Works via /etc/profile.d (login shells) and
+# /etc/bash.bashrc (non-login interactive shells such as "docker run -it bash").
+install_docker_autostart() {
+    local autostart_path="/etc/profile.d/docker-autostart.sh"
 
-    log_info "Installing dockerd entrypoint script at $entrypoint_path..."
+    log_info "Installing Docker autostart script at $autostart_path..."
 
-    cat << 'ENTRYPOINT_EOF' | sudo tee "$entrypoint_path" > /dev/null
+    cat << 'AUTOSTART_EOF' | sudo tee "$autostart_path" > /dev/null
 #!/bin/bash
-set -e
+# Auto-start Docker daemon for Docker-in-Docker containers.
+# Sourced by interactive shells; does nothing if Docker is not installed.
 
-# Start the Docker daemon if it is not already running.
-if ! pgrep -x dockerd > /dev/null 2>&1; then
-    echo "[dockerd-entrypoint] Starting dockerd..."
+# Guard: only for interactive shells
+[[ $- != *i* ]] && return
+
+# Guard: only if dockerd binary exists
+command -v dockerd >/dev/null 2>&1 || return
+
+# Guard: skip if dockerd is already running
+pgrep -x dockerd >/dev/null 2>&1 && return
+
+# Start dockerd (use sudo when not root)
+echo "[docker-autostart] Starting Docker daemon..."
+if [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null 2>&1; then
     sudo dockerd > /var/log/dockerd.log 2>&1 &
-
-    # Wait for the Docker socket (up to 30 seconds).
-    timeout=30
-    while [ "$timeout" -gt 0 ]; do
-        if [ -S /var/run/docker.sock ]; then
-            break
-        fi
-        sleep 1
-        timeout=$((timeout - 1))
-    done
-
-    if [ -S /var/run/docker.sock ]; then
-        echo "[dockerd-entrypoint] dockerd is ready."
-    else
-        echo "[dockerd-entrypoint] WARNING: dockerd did not start within 30s. Check /var/log/dockerd.log" >&2
-    fi
+else
+    dockerd > /var/log/dockerd.log 2>&1 &
 fi
 
-# Execute the CMD passed to the container.
-exec "$@"
-ENTRYPOINT_EOF
+# Wait for Docker to actually respond (up to 30 seconds).
+# Checking "docker info" is more reliable than just testing the socket file.
+_docker_wait=30
+while [ "$_docker_wait" -gt 0 ]; do
+    if docker info >/dev/null 2>&1; then
+        echo "[docker-autostart] Docker daemon is ready."
+        unset _docker_wait
+        return
+    fi
+    sleep 1
+    _docker_wait=$((_docker_wait - 1))
+done
+unset _docker_wait
 
-    sudo chmod +x "$entrypoint_path"
-    log_success "dockerd entrypoint installed at $entrypoint_path"
+echo "[docker-autostart] WARNING: Docker daemon did not become ready within 30s." >&2
+echo "[docker-autostart] Ensure the container is started with --privileged." >&2
+echo "[docker-autostart] Check /var/log/dockerd.log for details." >&2
+AUTOSTART_EOF
+
+    sudo chmod +x "$autostart_path"
+
+    # Also source from /etc/bash.bashrc so non-login interactive shells
+    # (e.g. "docker run -it image bash") pick it up.
+    if ! grep -q "docker-autostart.sh" /etc/bash.bashrc 2>/dev/null; then
+        log_info "Adding Docker autostart hook to /etc/bash.bashrc..."
+        printf '\n# Docker-in-Docker: auto-start dockerd for interactive sessions\n[ -f /etc/profile.d/docker-autostart.sh ] && . /etc/profile.d/docker-autostart.sh\n' \
+            | sudo tee -a /etc/bash.bashrc > /dev/null
+    fi
+
+    log_success "Docker autostart installed at $autostart_path"
 }
 
 # Start dockerd as a background process (fallback when systemd is not available)

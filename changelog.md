@@ -2,6 +2,70 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Completed] - 2026-04-15
+
+### Executive Summary
+
+#### AIB Remote Bootstrap Script Alignment
+
+Replaced the previous branch-pinned AIB bootstrap entry script with a dedicated remote installer script that tracks `main`. This simplifies AIB usage by using the shared remote installation flow directly and removing branch-specific coupling in the bootstrap command.
+
+**Key Improvements:**
+
+- ✅ **Script Replacement**: Removed `aib/install-aib.sh` and introduced `aib/install-remote.sh`
+- ✅ **Main Branch Source**: Bootstrap now downloads `install-remote.sh` from the `main` branch
+- ✅ **Simplified Invocation**: Keeps the remote installer call focused on `--no-cleanup` and `--log-level "DEBUG"`
+
+**Impact:**
+
+- AIB bootstrap behavior is easier to maintain because it no longer depends on a feature branch URL
+- The entry point is clearer and better aligned with the standard remote installer path
+
+### Technical Summary
+
+#### Files Changed
+
+- **Deleted**: `aib/install-aib.sh` — previous branch-specific bootstrap script
+- **Added**: `aib/install-remote.sh` — new bootstrap script targeting `main/install-remote.sh`
+
+---
+
+## [Completed] - 2026-04-14
+
+### Executive Summary
+
+#### Docker-In-Docker Reliability and AIB Bootstrap Enhancements
+
+Extended Docker installation support with Docker-in-Docker (DinD) runtime reliability improvements, a dedicated DinD configuration profile, and an Azure Image Builder bootstrap entry point for remote installation. This update also hardens package installation behavior in containerized and concurrent apt scenarios to reduce installer failures.
+
+**Key Improvements:**
+
+- ✅ **DinD Auto-Start Strategy**: Docker container environments now install a shell-based dockerd auto-start script instead of relying on a fixed container entrypoint
+- ✅ **Interactive + Non-Interactive Shell Coverage**: DinD startup now works through `/etc/profile.d`, `/etc/bash.bashrc`, and `BASH_ENV` for broader shell compatibility
+- ✅ **Dedicated Docker Profile**: Added `src/config-profiles/docker-in-docker-install.yaml` to run a focused Docker + Docker Compose installation flow
+- ✅ **AIB Bootstrap Script**: Added `aib/install-aib.sh` to bootstrap remote installer execution for the `feat/docker-install-support` flow
+- ✅ **APT Lock Handling Hardening**: Added centralized apt/dpkg lock waiting in `package-manager.sh` and reused it in safe apt helpers
+- ✅ **System Python Package Robustness**: System pip installs now prefer `pip3`, support root execution without sudo, and add `--ignore-installed` to avoid Debian RECORD-file uninstall errors
+- ✅ **Trivy Version Correction**: Updated Trivy installer version to `v0.69.3`
+
+**Impact:**
+
+- DinD environments are more stable across different shell invocation paths (`bash`, `bash -c`, login shells)
+- Installer behavior is more resilient during concurrent apt operations and container/root execution contexts
+- AIB workflows have a direct installer bootstrap path for Docker support scenarios
+
+### Technical Summary
+
+#### Files Changed
+
+- **New**: `aib/install-aib.sh` — remote bootstrap script invoking `install-remote.sh` for this branch
+- **New**: `src/config-profiles/docker-in-docker-install.yaml` — focused Docker installation profile
+- **Modified**: `src/custom-software/docker/install.sh` — DinD shell autostart implementation via profile hooks and `BASH_ENV`
+- **Modified**: `src/utils/package-manager.sh` — new `_wait_for_apt_locks()` helper and system pip install hardening (`pip3` preference, root-aware sudo behavior, `--ignore-installed`)
+- **Modified**: `src/custom-software/trivy/install.sh` — Trivy version bump from `v0.48.3` to `v0.69.3`
+
+---
+
 ## [Completed] - 2026-04-13
 
 ### Executive Summary
@@ -22,6 +86,7 @@ Added centralized environment detection and updated Docker installation to prope
 - ✅ **Docker Compose Updated**: `docker-compose/install.sh` now uses the centralized environment detector for Desktop integration checks
 
 **Impact:**
+
 - Azure Image Builder VMs can now pull and run Docker containers after installation without manual intervention
 - Environment detection is reusable by any future installation script via `source environment-detector.sh`
 - Existing WSL behavior is preserved with no breaking changes
@@ -29,6 +94,7 @@ Added centralized environment detection and updated Docker installation to prope
 ### Technical Summary
 
 #### Files Changed
+
 - **New**: `src/utils/environment-detector.sh` — centralized WSL/native/container detection with `has_systemd()` and `is_docker_desktop_integration()` helpers
 - **Modified**: `src/custom-software/docker/install.sh` — replaced monolithic service start with `configure_docker_service()` dispatching to `configure_docker_native()`, `configure_docker_wsl()`, and `configure_docker_container()`
 - **Modified**: `src/custom-software/docker-compose/install.sh` — sources `environment-detector.sh` and uses `is_docker_desktop_integration()` for Desktop detection
@@ -55,6 +121,7 @@ Implemented configurable installation order execution and enhanced Python packag
 - ✅ **APT Removal from Python Packages**: Removed apt support from Python package installation methods to focus on Python-native tools (pip/pipx)
 
 **Impact:**
+
 - Developers can now define custom installation sequences respecting dependencies
 - Python packages can be properly isolated between user and system contexts
 - Installation process is more predictable and controllable
@@ -65,6 +132,7 @@ Implemented configurable installation order execution and enhanced Python packag
 #### Installation Order Implementation
 
 **New Configuration Structure:**
+
 ```yaml
 installation_order:
   - prerequisites
@@ -80,6 +148,7 @@ installation_order:
 ```
 
 **Key Technical Features:**
+
 - **Comment Parsing**: Lines starting with `#` in installation_order are automatically skipped
 - **Section Validation**: All sections in installation_order are validated against supported section names
 - **Override Logic**: `--sections` parameter completely bypasses installation_order and uses provided order
@@ -89,21 +158,23 @@ installation_order:
 #### Enhanced Python Package Management
 
 **New Package Categories:**
+
 ```yaml
 # User-specific packages (recommended for CLI tools)
 user_python_packages:
   - name: pre-commit
     version: latest
-    install_method: pipx  # Default for user packages
+    install_method: pipx # Default for user packages
 
 # System-wide packages (for libraries and system tools)
 system_python_packages:
   - name: wheel
     version: latest
-    install_method: pip   # Default for system packages
+    install_method: pip # Default for system packages
 ```
 
 **Installation Method Logic:**
+
 - **User Packages**: Default to `pipx` for isolation, support `pip --user` for user-specific installation
 - **System Packages**: Use `pip` with `--break-system-packages` for Ubuntu 24.04 compatibility
 - **Method Validation**: Input sanitization and validation for pip and pipx installation methods
@@ -112,12 +183,14 @@ system_python_packages:
 #### Core Implementation Changes
 
 **Modified Files:**
+
 - `src/install.sh`: Added installation order parsing and execution logic
 - `src/utils/package-manager.sh`: Enhanced with user/system Python package functions
 - `src/config-profiles/full-install.yaml`: Updated with new Python package structure
 - `docs/configuration-reference.md`: Added comprehensive installation order documentation
 
 **New Functions Added:**
+
 - `parse_installation_order()`: Parses installation_order from config with comment support
 - `execute_sections_in_order()`: Executes sections in specified order with logging
 - `install_user_python_package()`: Handles user-specific Python package installation
@@ -126,6 +199,7 @@ system_python_packages:
 - `install_system_python_package_pip()`: System pip installation with proper flags
 
 **Security and Compatibility:**
+
 - Proper `--break-system-packages` flag usage for Ubuntu 24.04 PEP 668 compliance
 - Input validation and sanitization for all package names and versions
 - Enhanced error reporting and logging for troubleshooting
@@ -150,6 +224,7 @@ Significantly expanded the development environment capabilities by adding 6 new 
 - ✅ **Example Configurations**: Updated existing examples to demonstrate new capabilities and best practices
 
 **Impact:**
+
 - Developers now have access to industry-standard security scanning tools
 - Python package management is more flexible with isolated environments via pipx
 - Configuration is more explicit and maintainable with install_method specifications
@@ -160,12 +235,14 @@ Significantly expanded the development environment capabilities by adding 6 new 
 #### Core Infrastructure Enhancements
 
 **Python Package Manager Refactoring:**
+
 - Refactored `install_python_package()` function in `package-manager.sh` to support multiple installation methods
 - Added `install_python_package_pip()` and `install_python_package_pipx()` functions (removed apt support for cleaner Python package management)
 - Updated `install.sh` to extract and pass `install_method` parameter from YAML configuration
 - Implemented input validation and sanitization for install_method parameter with fallback to pipx default
 
 **New Tool Installation Scripts:**
+
 - `terraform-docs/install.sh`: Documentation generator for Terraform modules (v0.17.0)
 - `tflint/install.sh`: Terraform linter for finding errors and security issues (v0.48.0)
 - `tfsec/install.sh`: Terraform security scanner (v1.28.5)
@@ -173,6 +250,7 @@ Significantly expanded the development environment capabilities by adding 6 new 
 - `gitleaks/install.sh`: Secret detection tool for Git repositories (v8.18.0)
 
 **Configuration Updates:**
+
 - Enhanced `full-install.yaml` with new security tools in custom_software section
 - Added checkov to python_packages section with pip install_method
 - Updated pre-commit to use pipx install_method for better isolation
@@ -181,6 +259,7 @@ Significantly expanded the development environment capabilities by adding 6 new 
 #### Security and Best Practices
 
 **Installation Script Security:**
+
 - All scripts follow strict error handling with `set -euo pipefail`
 - Input validation and sanitization for all parameters
 - Secure temporary directory creation with proper cleanup traps
@@ -188,6 +267,7 @@ Significantly expanded the development environment capabilities by adding 6 new 
 - Binary verification before installation to system locations
 
 **Package Management Security:**
+
 - Python packages use explicit install_method specifications
 - pipx provides isolated environments for CLI tools (default and recommended)
 - pip installations use --break-system-packages flag for Ubuntu 24.04+ compatibility
@@ -196,12 +276,14 @@ Significantly expanded the development environment capabilities by adding 6 new 
 #### Documentation and Examples
 
 **Configuration Reference Updates:**
+
 - Enhanced Python Packages Section with complete install_method documentation
 - Added detailed notes about Ubuntu 24.04+ compatibility requirements
 - Included practical examples showing checkov and pre-commit installations
 - Clarified default behavior and security recommendations
 
 **Example Configuration Updates:**
+
 - Updated data-science.yaml to include gitleaks for repository security scanning
 - Added install_method properties to all Python packages in examples
 - Demonstrated best practices for CLI tools (pipx) vs libraries (pip)
@@ -209,12 +291,14 @@ Significantly expanded the development environment capabilities by adding 6 new 
 #### Integration and Compatibility
 
 **Backward Compatibility:**
+
 - All existing configurations continue to work unchanged
 - Default install_method is pipx for new configurations
 - Existing python_packages without install_method property use pipx automatically
 - No breaking changes to existing API or configuration structure
 
 **Testing and Validation:**
+
 - YAML configuration validation confirmed for all new sections
 - Syntax validation passed for all new installation scripts
 - Function availability testing confirmed proper sourcing of new utilities
@@ -443,7 +527,7 @@ Successfully completed comprehensive reorganization of installation script direc
   - Contains: `set-zsh-default.sh` (moved from shell-config/)
   - Purpose: Scripts that configure shell environments and settings
 
-- **NEW**: `src/custom-software/` - Custom software installation scripts directory  
+- **NEW**: `src/custom-software/` - Custom software installation scripts directory
   - Contains: 26+ software installation scripts (azure-cli, docker, nodejs, terraform, etc.)
   - Purpose: Scripts for installing software not available via standard package managers
 
@@ -471,7 +555,7 @@ Successfully completed comprehensive reorganization of installation script direc
 
 - ✅ All moved to `custom-software/` directory maintaining subdirectory structure:
   - `custom-software/azure-cli/install.sh`
-  - `custom-software/docker/install.sh` 
+  - `custom-software/docker/install.sh`
   - `custom-software/nodejs/install.sh`
   - `custom-software/terraform/install.sh`
   - [22+ additional software packages]
@@ -489,7 +573,7 @@ Successfully completed comprehensive reorganization of installation script direc
 **COMPLETED**: All script references updated in `src/install.yaml`:
 
 - **Shell Setup Section**: Updated paths to use `shell-setup/` prefix
-- **Custom Software Section**: Updated paths to use `custom-software/` prefix  
+- **Custom Software Section**: Updated paths to use `custom-software/` prefix
 - **Configurations Section**: Updated paths to use `configurations/` prefix
 - **Maintained**: Snake_case section names in YAML (shell_setup, custom_software, configurations)
 - **Implemented**: Kebab-case directory names (shell-setup, custom-software, configurations)
@@ -538,7 +622,7 @@ Successfully completed comprehensive reorganization of installation script direc
 **Implementation Status**: 100% Complete
 
 - **All 28+ scripts reorganized** into logical functional directories
-- **All YAML paths updated** to reflect new directory structure  
+- **All YAML paths updated** to reflect new directory structure
 - **All critical path resolution bugs fixed** ensuring robust execution
 - **All utility script conflicts resolved** through proper variable scoping
 - **Full integration testing completed** with successful installation workflows
@@ -595,7 +679,7 @@ Successfully completed comprehensive refactoring of all 26 installation scripts 
 **Architecture Implementation:**
 
 - **Core Framework**: `src/utils/installation-framework.sh` - Unified installation orchestration
-- **Security Layer**: `src/utils/security-helpers.sh` - Comprehensive input validation and sanitization  
+- **Security Layer**: `src/utils/security-helpers.sh` - Comprehensive input validation and sanitization
 - **Package Management**: Enhanced `src/utils/package-manager.sh` with security integration
 - **Template System**: `templates/install-script-template.sh` for standardized development
 - **Testing Suite**: `src/tests/test-framework.sh` for comprehensive validation
@@ -610,7 +694,7 @@ Successfully completed comprehensive refactoring of all 26 installation scripts 
 **Security Enhancements:**
 
 - Input validation using regex patterns preventing injection attacks
-- Path sanitization preventing directory traversal vulnerabilities  
+- Path sanitization preventing directory traversal vulnerabilities
 - Secure temporary file creation with restricted permissions
 - URL validation with checks against dangerous patterns and protocols
 - Command injection prevention using parameter arrays instead of string concatenation
@@ -691,7 +775,7 @@ Successfully completed comprehensive refactoring of all 26 installation scripts 
 
 **Infrastructure & Development Tools:**
 
-- ✅ `azure-cli/install.sh` - Azure CLI with framework integration + critical fixes  
+- ✅ `azure-cli/install.sh` - Azure CLI with framework integration + critical fixes
 - ✅ `azure-devops-cli/install.sh` - Azure DevOps CLI with dependency resolution
 - ✅ `docker/install.sh` - Docker with WSL Desktop integration handling
 - ✅ `docker-compose/install.sh` - Docker Compose with WSL scenario detection
@@ -741,7 +825,7 @@ Successfully completed comprehensive refactoring of all 26 installation scripts 
 Each refactored script now includes:
 
 - **Unified Architecture**: Uses `installation-framework.sh` with fallback mechanisms
-- **Security Integration**: Input validation and sanitization via `security-helpers.sh`  
+- **Security Integration**: Input validation and sanitization via `security-helpers.sh`
 - **Enhanced Error Handling**: Standardized error patterns with comprehensive logging
 - **WSL Detection**: Smart WSL environment detection for cross-platform compatibility
 - **Installation Verification**: Post-installation validation with timeout protection
@@ -796,7 +880,7 @@ Each refactored script now includes:
 **Implementation Status**: 100% Complete
 
 - **All 26 scripts refactored** using DRY principles
-- **All critical fixes applied** ensuring production stability  
+- **All critical fixes applied** ensuring production stability
 - **WSL Docker integration** handling implemented
 - **Framework integration bugs** resolved
 - **Security enhancements** deployed across all scripts

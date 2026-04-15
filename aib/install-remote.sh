@@ -1,0 +1,1 @@
+curl -sSL "https://raw.githubusercontent.com/andresrocksuk/andresrocksuk.ubuntu-devbox-installer/main/install-remote.sh" | bash -s -- --no-cleanup --log-level "DEBUG"

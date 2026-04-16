@@ -284,6 +284,20 @@ test_custom_software() {
                     "nodejs-lts")
                         test_command "$name" "node" "any" "--version"
                         ;;
+                    "azure-devops-cli")
+                        local extension_version=""
+                        if command_exists "az"; then
+                            extension_version=$(az extension show --name azure-devops --query version -o tsv 2>/dev/null || true)
+                        fi
+
+                        if [ -n "$extension_version" ] && [ "$extension_version" != "null" ]; then
+                            TEST_RESULTS+=("✅ $name: $extension_version")
+                            log_success "✅ $name: $extension_version"
+                        else
+                            MISSING_SOFTWARE+=("$name")
+                            log_error "❌ $name: not installed"
+                        fi
+                        ;;
                     "oh-my-zsh")
                         if [ -d "$HOME/.oh-my-zsh" ]; then
                             TEST_RESULTS+=("✅ $name: installed")
@@ -301,6 +315,7 @@ test_custom_software() {
         fi
     done
 }
+
 
 # Function to test Python packages
 test_python_packages() {

@@ -2,6 +2,38 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Completed] - 2026-04-16
+
+### Executive Summary
+
+#### Shared Azure DevOps CLI Extension Support For Headless And Image-Based Users
+
+Fixed Azure DevOps CLI extension visibility for non-interactive and image-based users by moving the extension to a shared system directory and exposing it through a system-wide `az` wrapper. This addresses cases where Azure CLI was installed but `az devops` was unavailable because the extension had been installed into the build user's private CLI extension directory.
+
+**Key Improvements:**
+
+- ✅ **Shared Extension Directory**: Azure DevOps CLI extension now installs into `/usr/local/share/azure-cli/cliextensions`
+- ✅ **System-Wide Azure CLI Wrapper**: Added `/usr/local/bin/az` wrapper that sets `AZURE_EXTENSION_DIR` automatically when not already defined
+- ✅ **Headless Session Support**: Added shared environment configuration for profile-based and system environment loading
+- ✅ **Installer Verification Fix**: Installation tests now validate the Azure DevOps extension directly instead of only checking the base Azure CLI binary
+- ✅ **Focused Test Coverage**: Added a dedicated installer test for the shared Azure DevOps CLI extension flow
+
+**Impact:**
+
+- Azure Image Builder and other headless environments can use `az devops` reliably after image creation
+- Service users and automation accounts no longer depend on the original build user's private `~/.azure/cliextensions` directory
+
+### Technical Summary
+
+#### Files Changed
+
+- **Modified**: `src/custom-software/azure-devops-cli/install.sh` — installs the extension into a shared directory, writes shared environment configuration, and creates an `az` wrapper
+- **Modified**: `src/tests/test-installation.sh` — validates Azure DevOps CLI as an extension instead of treating Azure CLI itself as sufficient
+- **Added**: `src/tests/test-azure-devops-cli.sh` — focused test for shared Azure DevOps CLI extension installation behavior
+- **Modified**: `docs/troubleshooting.md` — added guidance for missing `az devops` commands in headless sessions
+
+---
+
 ## [Completed] - 2026-04-15
 
 ### Executive Summary

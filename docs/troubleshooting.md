@@ -13,12 +13,14 @@ wsl : The term 'wsl' is not recognized as the name of a cmdlet...
 ```
 
 **Solution:**
+
 1. Enable WSL feature:
+
    ```powershell
    # Run as Administrator
    Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
    Enable-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform
-   
+
    # Restart computer
    Restart-Computer
    ```
@@ -38,7 +40,9 @@ chmod: changing permissions of '/usr/local/bin/tool': Operation not permitted
 ```
 
 **Solutions:**
+
 1. **For system directories:**
+
    ```bash
    # Use sudo for system locations
    sudo chmod +x /usr/local/bin/tool
@@ -46,6 +50,7 @@ chmod: changing permissions of '/usr/local/bin/tool': Operation not permitted
    ```
 
 2. **For user directories:**
+
    ```bash
    # Fix user directory permissions
    sudo chown -R $USER:$USER ~/.local
@@ -69,7 +74,9 @@ wget: unable to resolve host address 'releases.example.com'
 ```
 
 **Solutions:**
+
 1. **Check connectivity:**
+
    ```bash
    # Test basic connectivity
    ping google.com
@@ -77,12 +84,13 @@ wget: unable to resolve host address 'releases.example.com'
    ```
 
 2. **Configure proxy (corporate networks):**
+
    ```bash
    # Set proxy environment variables
    export http_proxy=http://proxy.company.com:8080
    export https_proxy=http://proxy.company.com:8080
    export no_proxy=localhost,127.0.0.1,.company.com
-   
+
    # Configure Git proxy
    git config --global http.proxy http://proxy.company.com:8080
    ```
@@ -104,19 +112,23 @@ E: Package 'package-name' has no installation candidate
 ```
 
 **Solutions:**
+
 1. **Update package lists:**
+
    ```bash
    sudo apt update
    sudo apt upgrade
    ```
 
 2. **Enable universe repository:**
+
    ```bash
    sudo add-apt-repository universe
    sudo apt update
    ```
 
 3. **Check package name:**
+
    ```bash
    # Search for correct package name
    apt search package-name
@@ -143,6 +155,7 @@ Invalid username. Username must:
 ```
 
 **Solutions:**
+
 1. **Use valid username format:**
    - Only lowercase letters, numbers, underscores, hyphens
    - Start with a letter
@@ -150,6 +163,7 @@ Invalid username. Username must:
    - No spaces or special characters
 
 2. **Set username via environment variable:**
+
    ```powershell
    $env:WSL_DEFAULT_USERNAME = "validusername"
    .\install-wsl.ps1 -AutoInstall -Force
@@ -174,18 +188,21 @@ command-name: command not found
 ```
 
 **Solutions:**
+
 1. **Reload shell configuration:**
+
    ```bash
    # Reload current shell
    source ~/.bashrc
    source ~/.zshrc
-   
+
    # Or restart shell
    exec bash
    exec zsh
    ```
 
 2. **Check installation location:**
+
    ```bash
    # Find installed binary
    find /usr -name "command-name" 2>/dev/null
@@ -194,12 +211,42 @@ command-name: command not found
    ```
 
 3. **Update PATH:**
+
    ```bash
    # Add to PATH temporarily
    export PATH="/usr/local/bin:$PATH"
-   
+
    # Add to shell configuration permanently
    echo 'export PATH="/usr/local/bin:$PATH"' >> ~/.bashrc
+   ```
+
+### Azure DevOps CLI Missing In Headless Sessions
+
+**Problem:** `az devops` commands are unavailable for non-interactive users or image-based agents even though Azure CLI itself is installed.
+
+```bash
+az: 'devops' is not in the 'az' command group
+```
+
+**Solutions:**
+
+1. **Use the shared extension installation layout:**
+
+   ```bash
+   ls -la /usr/local/share/azure-cli/cliextensions/azure-devops
+   ls -la /usr/local/bin/az
+   ```
+
+2. **Verify the wrapper exposes the shared extension directory:**
+
+   ```bash
+   az extension show --name azure-devops --query version -o tsv
+   ```
+
+3. **If the image was built before the shared extension fix:**
+   ```bash
+   # Re-run the installer script or rebuild the image
+   src/custom-software/azure-devops-cli/install.sh
    ```
 
 ### Docker Issues
@@ -211,30 +258,34 @@ Got permission denied while trying to connect to the Docker daemon socket
 ```
 
 **Solutions:**
+
 1. **Add user to docker group:**
+
    ```bash
    sudo usermod -aG docker $USER
-   
+
    # Log out and back in, or restart WSL
    wsl --terminate Ubuntu-24.04
    wsl --distribution Ubuntu-24.04
    ```
 
 2. **Start Docker service:**
+
    ```bash
    # Check Docker service status
    sudo systemctl status docker
-   
+
    # Start Docker service
    sudo systemctl start docker
    sudo systemctl enable docker
    ```
 
 3. **WSL-specific Docker setup:**
+
    ```bash
    # For WSL, you might need to start Docker manually
    sudo service docker start
-   
+
    # Add to shell startup
    echo 'sudo service docker start' >> ~/.bashrc
    ```
@@ -249,11 +300,13 @@ pip: command not found
 ```
 
 **Solutions:**
+
 1. **Use pipx for applications:**
+
    ```bash
    # Install applications with pipx
    pipx install package-name
-   
+
    # Install libraries with pip in virtual environment
    python3 -m venv myenv
    source myenv/bin/activate
@@ -261,21 +314,23 @@ pip: command not found
    ```
 
 2. **Fix pip installation:**
+
    ```bash
    # Reinstall pip
    sudo apt remove python3-pip
    sudo apt install python3-pip
-   
+
    # Or use get-pip.py
    curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
    python3 get-pip.py --user
    ```
 
 3. **PEP 668 compliance:**
+
    ```bash
    # Use --break-system-packages flag (not recommended)
    pip install --break-system-packages package-name
-   
+
    # Better: use virtual environments
    python3 -m venv ~/.local/share/venvs/myenv
    source ~/.local/share/venvs/myenv/bin/activate
@@ -293,30 +348,34 @@ install-wsl.ps1: Cannot validate argument on parameter 'Config'. Configuration f
 ```
 
 **Solutions:**
+
 1. **File path issues:**
+
    ```powershell
    # Wrong: relative path without checking existence
    .\install-wsl.ps1 -Config "config.yaml"
-   
+
    # Right: use full path or verify file exists
    .\install-wsl.ps1 -Config "C:\full\path\to\config.yaml"
    .\install-wsl.ps1 -Config "src\install.yaml"  # Project's default config
    ```
 
 2. **Remote URL validation:**
+
    ```powershell
    # Wrong: non-HTTPS URL
    .\install-wsl.ps1 -Config "http://example.com/config.yaml"
-   
+
    # Right: HTTPS URL required for security
    .\install-wsl.ps1 -Config "https://example.com/config.yaml"
    ```
 
 3. **Built-in configuration names:**
+
    ```powershell
    # Wrong: invalid built-in name
    .\install-wsl.ps1 -Config "invalid-config"
-   
+
    # Right: use valid built-in configurations
    .\install-wsl.ps1 -Config "minimal-dev"
    .\install-wsl.ps1 -Config "data-science"
@@ -331,22 +390,25 @@ install-wsl.ps1: Cannot validate argument on parameter 'Config'. Configuration f
 ```
 
 **Solutions:**
+
 1. **Validate YAML syntax:**
+
    ```bash
    # Check syntax with yq
    yq eval '.' src/install.yaml
-   
+
    # Use online YAML validator
    # Copy content to yamllint.com
    ```
 
 2. **Common YAML issues:**
+
    ```yaml
    # Wrong: inconsistent indentation
    apt_packages:
      - name: git
    version: latest
-   
+
    # Right: consistent indentation
    apt_packages:
      - name: git
@@ -354,10 +416,11 @@ install-wsl.ps1: Cannot validate argument on parameter 'Config'. Configuration f
    ```
 
 3. **Fix special characters:**
+
    ```yaml
    # Wrong: unquoted special characters
    description: Package with : special chars
-   
+
    # Right: quoted strings with special characters
    description: "Package with : special chars"
    ```
@@ -373,6 +436,7 @@ Valid sections are: prerequisites apt_packages shell_setup custom_software...
 
 **Solution:**
 Use only valid section names:
+
 ```powershell
 # Valid sections
 .\install-wsl.ps1 -AutoInstall -Config "prerequisites","apt_packages","custom_software"
@@ -414,6 +478,7 @@ src/utils/logs/
 ```
 
 **Reading log patterns:**
+
 ```bash
 # Success indicators
 grep "SUCCESS" logs/wsl-installation-*.log
@@ -431,22 +496,28 @@ tail -50 logs/wsl-installation-*.log
 ### Common Log Errors
 
 **Lock file errors:**
+
 ```bash
 E: Could not get lock /var/lib/dpkg/lock-frontend
 ```
-*Solution: Wait for other package operations to complete, or reboot WSL*
+
+_Solution: Wait for other package operations to complete, or reboot WSL_
 
 **Network timeout errors:**
+
 ```bash
 curl: (28) Operation timed out after 30000 milliseconds
 ```
-*Solution: Check network connectivity, configure proxy if needed*
+
+_Solution: Check network connectivity, configure proxy if needed_
 
 **Permission errors:**
+
 ```bash
 mv: cannot move '/tmp/tool' to '/usr/local/bin/tool': Permission denied
 ```
-*Solution: Ensure script uses sudo for system locations*
+
+_Solution: Ensure script uses sudo for system locations_
 
 ## Recovery Procedures
 
@@ -537,11 +608,13 @@ echo '{"test": true}' | jq .
 ### Performance Issues
 
 **Slow installation:**
+
 - Use `--run-direct` to avoid temp directory copying
 - Check available disk space: `df -h`
 - Monitor network speed during downloads
 
 **High memory usage:**
+
 - Close other applications during installation
 - Check memory usage: `free -h`
 - Consider installing in smaller sections
@@ -567,6 +640,7 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 **Issue:** WSL can't connect to internet after Windows hibernation.
 
 **Workaround:**
+
 ```powershell
 # Restart WSL networking
 wsl --shutdown
@@ -579,7 +653,9 @@ wsl --distribution Ubuntu-24.04
 **Issue:** Nix installation fails or packages aren't available.
 
 **Solutions:**
+
 1. **Install Nix manually first:**
+
    ```bash
    curl -L https://nixos.org/nix/install | sh
    source ~/.nix-profile/etc/profile.d/nix.sh
@@ -620,6 +696,7 @@ cat /etc/resolv.conf
 ### Reporting Issues
 
 Include in your issue report:
+
 1. Complete error messages from logs
 2. System information (above)
 3. Steps to reproduce the problem

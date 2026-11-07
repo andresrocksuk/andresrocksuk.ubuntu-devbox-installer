@@ -2,6 +2,8 @@
 **/temp/**
 **/*.lock
 
-.github/**
+.github/*
+!.github/copilot-instructions.md
+!.github/docs
 
 src/install.yaml

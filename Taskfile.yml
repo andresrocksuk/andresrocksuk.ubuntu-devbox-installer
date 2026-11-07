@@ -1,0 +1,56 @@
+version: '3'
+
+vars:
+  PROJECT_NAME: ubuntu-devbox-installer
+
+tasks:
+  default:
+    desc: List available tasks
+    cmds:
+      - task --list
+    silent: true
+
+  lint:
+    desc: Validate bash script syntax across the codebase
+    cmds:
+      - echo "Checking bash scripts syntax..."
+      - find src -name "*.sh" -exec bash -n {} +
+      - find templates -name "*.sh" -exec bash -n {} +
+      - echo "All bash scripts passed syntax validation."
+
+  validate:yaml:
+    desc: Validate YAML configuration profiles
+    cmds:
+      - echo "Validating YAML configuration files..."
+      - yq eval '.' src/config-profiles/*.yaml > /dev/null
+      - yq eval '.' examples/*.yaml > /dev/null
+      - echo "All YAML configuration files are valid."
+
+  test:taskfile:
+    desc: Run dedicated Taskfile CLI integration test
+    cmds:
+      - bash src/tests/test-taskfile-installation.sh
+
+  test:security:
+    desc: Run security helper and input validation tests
+    cmds:
+      - bash src/tests/test-security.sh
+
+  test:basic:
+    desc: Run basic functionality tests
+    cmds:
+      - bash src/tests/test-basic-functionality.sh
+
+  test:
+    desc: Run primary test suite (basic, security, and taskfile tests)
+    cmds:
+      - task: lint
+      - task: validate:yaml
+      - task: test:security
+      - task: test:taskfile
+      - task: test:basic
+
+  dry-run:
+    desc: Run installer in dry-run mode
+    cmds:
+      - bash src/install.sh --dry-run --config src/config-profiles/full-install.yaml

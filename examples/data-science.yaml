@@ -174,12 +174,12 @@ configurations:
       mkdir -p ~/.jupyter
       echo "Creating Jupyter configuration..."
       python3 -c "
-from jupyter_core.paths import jupyter_config_dir
-import os
-config_dir = jupyter_config_dir()
-os.makedirs(config_dir, exist_ok=True)
-print(f'Jupyter config directory: {config_dir}')
-"
+      from jupyter_core.paths import jupyter_config_dir
+      import os
+      config_dir = jupyter_config_dir()
+      os.makedirs(config_dir, exist_ok=True)
+      print(f'Jupyter config directory: {config_dir}')
+      "
   - name: setup-data-directories
     description: "Create standard data science directory structure"
     script: |

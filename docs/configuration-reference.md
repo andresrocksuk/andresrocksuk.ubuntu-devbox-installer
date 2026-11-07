@@ -333,6 +333,12 @@ custom_software:
     script: nodejs/install.sh
     version_command: node
     version_flag: --version
+
+  - name: taskfile
+    description: "Task runner and build tool"
+    script: custom-software/taskfile/install.sh
+    version_command: task
+    version_flag: --version
 ```
 
 **Custom Software Fields:**

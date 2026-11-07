@@ -2,6 +2,43 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Completed] - 2026-11-07
+
+### Executive Summary
+
+#### Taskfile (Task) CLI Tool Integration
+
+Introduced the modern build automation and task runner CLI tool Task (`task` from https://taskfile.dev/) to the development environment installer. Following an architectural evaluation of official installation approaches (comparing the official install script with automated SHA-256 checksum verification, direct GitHub release archives, and third-party Cloudsmith apt repositories), Task is integrated as a custom software component using the official installer with checksum validation and a direct GitHub release fallback. In addition, repository-level task definitions were added via a root `Taskfile.yml` to streamline common developer tasks including linting, YAML validation, testing, and dry-run execution.
+
+**Key Improvements:**
+
+- ✅ **Custom Software Installer**: Added `src/custom-software/taskfile/install.sh` with architecture detection (`amd64`, `arm64`, `arm`, `386`), official install script integration, SHA-256 verification, and robust GitHub release fallback
+- ✅ **Shell Autocompletion**: Automatically sets up shell completions for Bash (`/etc/bash_completion.d/task`) and Zsh (`/usr/local/share/zsh/site-functions/_task`)
+- ✅ **Profile Configuration**: Registered `taskfile` in `src/config-profiles/full-install.yaml` under `custom_software`
+- ✅ **Version Checker Integration**: Added dedicated version parsing in `src/utils/version-checker.sh` for `task`
+- ✅ **Repository Taskfile**: Added root `Taskfile.yml` with tasks for `lint`, `validate:yaml`, `test:security`, `test:taskfile`, `test:basic`, `test`, and `dry-run`
+- ✅ **Dedicated Test Suite**: Created `src/tests/test-taskfile-installation.sh` verifying syntax, permissions, isolated sandbox installation, idempotency, and Taskfile task execution
+- ✅ **Complete Documentation**: Created `docs/taskfile.md`, updated `docs/configuration-reference.md`, `docs/readme.md`, and `readme.md`
+
+### Technical Summary
+
+#### Files Changed
+
+- **Added**: `src/custom-software/taskfile/install.sh` — installer script for Task CLI with architecture detection, checksum verification, shell completion setup, and security hardening
+- **Added**: `src/tests/test-taskfile-installation.sh` — dedicated test suite for Taskfile installation and verification
+- **Added**: `Taskfile.yml` — root task definition file automating developer workflows
+- **Added**: `docs/taskfile.md` — comprehensive documentation on Task integration, installation strategies, and usage
+- **Added**: `.github/docs/2026-11-07-taskfile-cli-integration.md` — implementation and evaluation plan
+- **Modified**: `src/config-profiles/full-install.yaml` — registered `taskfile` in `custom_software`
+- **Modified**: `src/utils/version-checker.sh` — added explicit version extraction case for `task`
+- **Modified**: `docs/configuration-reference.md` — updated custom software examples to include `taskfile`
+- **Modified**: `docs/readme.md` — added link to Taskfile CLI Reference
+- **Modified**: `readme.md` — added Taskfile under Build Tools in Available Software
+- **Modified**: `examples/data-science.yaml` — fixed multi-line script indentation for valid YAML syntax
+- **Modified**: `src/install.sh` — set executable filemode
+
+---
+
 ## [Completed] - 2026-04-16
 
 ### Executive Summary

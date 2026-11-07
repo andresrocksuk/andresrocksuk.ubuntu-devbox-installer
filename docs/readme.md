@@ -10,6 +10,7 @@ Welcome to the WSL Ubuntu DevBox Installer documentation. This directory contain
 
 ### Configuration and Usage
 - **[Configuration Reference](configuration-reference.md)** - Complete YAML schema and configuration options
+- **[Taskfile CLI Reference](taskfile.md)** - Taskfile installation strategy, usage, and tasks
 - **[API Reference](api-reference.md)** - Utility functions, scripting APIs, and technical reference
 
 ### Development and Contribution

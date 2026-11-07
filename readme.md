@@ -90,7 +90,7 @@ The default configuration includes:
 ### System Utilities
 
 - **CLI Tools**: bat, fzf, zoxide, fastfetch, yq, jq
-- **Build Tools**: build-essential, unzip, zip
+- **Build Tools**: build-essential, unzip, zip, task (Taskfile)
 - **Monitoring**: htop, tree
 
 ## 🎛️ Configuration Options

@@ -264,6 +264,12 @@ custom_software:
     version_command: gitleaks
     version_flag: version
 
+  - name: taskfile
+    description: "Task runner and build tool"
+    script: custom-software/taskfile/install.sh
+    version_command: task
+    version_flag: --version
+
 # System Python packages (installed system-wide)
 system_python_packages:
   - name: pre-commit

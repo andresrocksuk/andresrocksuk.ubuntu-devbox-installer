@@ -156,6 +156,9 @@ get_command_version() {
         "wget")
             version_output=$($cmd --version 2>/dev/null | head -n1 | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)*' | head -n1)
             ;;
+        "task")
+            version_output=$($cmd --version 2>/dev/null | head -n1 | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)*' | head -n1)
+            ;;
         *)
             version_output=$($cmd $version_flag 2>/dev/null | head -n1 | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)*' | head -n1)
             ;;
